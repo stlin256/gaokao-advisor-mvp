@@ -5,6 +5,9 @@ from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory, Response
 from openai import OpenAI
 import redis
+from dotenv import load_dotenv
+
+load_dotenv() # Load environment variables from .env file
 
 # --- Configuration ---
 DAILY_LIMIT = int(os.environ.get("DAILY_LIMIT", 100))

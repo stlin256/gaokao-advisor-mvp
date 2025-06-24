@@ -144,13 +144,16 @@
 2.  **配置环境变量**:
     - 复制 `.env.example` 为 `.env`。
     - 在 `.env` 文件中填入你的 `OPENAI_API_KEY` ,`OPENAI_API_BASE`和`OPENAI_MODEL_NAME`。
-    - (可选) 设置 `DAILY_LIMIT=200` 来调整每日API请求上限（默认100）。
+    - (可选) 设置 `DAILY_LIMIT` 来调整每日API请求上限（默认100）。
+    - (可选) 设置 `PORT` 来调整服务端口（默认5000）。
     
-    以下是一个使用阿里百炼平台的填写样例：
+    以下是一个使用阿里百炼平台的填写样例，端口号5000，日限额10000：
     ```
     OPENAI_API_KEY="<your api key>"
     OPENAI_API_BASE="https://dashscope.aliyuncs.com/compatible-mode/v1"
     OPENAI_MODEL_NAME="qwen3-235b-a22b"
+    DAILY_LIMIT=10000
+    PORT=5000
     ```
     OPENAI_MODEL_NAME变量应当以`/v1`结尾。
 
