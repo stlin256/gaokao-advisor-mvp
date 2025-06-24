@@ -145,6 +145,7 @@
     - 复制 `.env.example` 为 `.env`。
     - 在 `.env` 文件中填入你的 `OPENAI_API_KEY` ,`OPENAI_API_BASE`和`OPENAI_MODEL_NAME`。
     - (可选) 设置 `DAILY_LIMIT` 来调整每日API请求上限（默认100）。
+    - (可选) 设置 `LOAD_ENROLLMENT_DATA` 为 `true` 来在AI推理时加载本地的招生数据文件 (`_data/enrollment_data_2025.json`)。如果设置为 `false` 或不设置，AI将仅依赖其自身的知识库进行分析。
     
     以下是一个使用阿里百炼平台的填写样例，日限额10000：
     ```
