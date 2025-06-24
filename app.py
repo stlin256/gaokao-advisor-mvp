@@ -1,13 +1,16 @@
 import os
 import json
 import traceback
+from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory, Response
 from openai import OpenAI
 import redis
 
 # --- Configuration ---
 DAILY_LIMIT = int(os.environ.get("DAILY_LIMIT", 100))
-KV_KEY = 'daily_requests_count'
+def get_daily_key():
+    """Generates a Redis key for the current day based on UTC."""
+    return f"daily_requests_count:{datetime.utcnow().strftime('%Y-%m-%d')}"
 
 # --- Redis Connection ---
 kv = None
@@ -82,7 +85,7 @@ def get_usage():
     if not kv:
         return jsonify({"used": "N/A", "limit": "N/A", "error": "数据库未连接"}), 500
     try:
-        current_usage = int(kv.get(KV_KEY) or 0)
+        current_usage = int(kv.get(get_daily_key()) or 0)
         return jsonify({"used": current_usage, "limit": DAILY_LIMIT})
     except Exception as e:
         return jsonify({"used": "N/A", "limit": "N/A", "error": str(e)}), 500
@@ -92,7 +95,7 @@ def handler():
     # --- Cost Control & Safety Check ---
     if kv:
         try:
-            current_usage = int(kv.get(KV_KEY) or 0)
+            current_usage = int(kv.get(get_daily_key()) or 0)
             if current_usage >= DAILY_LIMIT:
                 error_msg = {"error": f"非常抱歉，今日的免费体验名额（{DAILY_LIMIT}次）已被抢完！请您明日再来。"}
                 return jsonify({**error_msg, "usage": {"used": current_usage, "limit": DAILY_LIMIT}}), 429
@@ -122,7 +125,7 @@ def handler():
     def stream_response(p):
         try:
             if kv:
-                new_usage = kv.incr(KV_KEY)
+                new_usage = kv.incr(get_daily_key())
                 yield f"event: usage\ndata: {json.dumps({'used': new_usage, 'limit': DAILY_LIMIT})}\n\n"
 
             api_key = os.environ.get("OPENAI_API_KEY")
