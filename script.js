@@ -455,6 +455,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return null; // Stop submission if selection is incomplete
             }
             streamText = `新高考 (3+1+2): ${firstChoice} + ${secondChoices.join(' + ')}`;
+        } else if (selectedStream === '物理类' || selectedStream === '历史类') {
+            // No change needed, just use the value
         }
         
         const rawText = `
