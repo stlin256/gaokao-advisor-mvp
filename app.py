@@ -333,7 +333,7 @@ def handler():
             error_message = { "error": f"服务器在与AI通信时发生错误: {e}", "traceback": error_trace }
             yield f"event: error\ndata: {json.dumps(error_message, ensure_ascii=False)}\n\n"
 
-    return Response(stream_response(prompt), mimetype='text/event-stream')
+    return Response(stream_response(user_prompt), mimetype='text/event-stream')
 
 if __name__ == "__main__":
     load_or_initialize_data()
