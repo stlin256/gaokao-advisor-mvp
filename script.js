@@ -402,19 +402,27 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const { jsPDF } = window.jspdf;
             
+            // 1. Create a container for PDF content that is NOT attached to the DOM
             const pdfContent = document.createElement('div');
-            pdfContent.style.padding = '20px';
-            pdfContent.style.width = '800px';
-            pdfContent.style.background = 'white';
-            pdfContent.style.color = 'black';
+            pdfContent.style.cssText = `
+                position: absolute;
+                left: -9999px; /* Position off-screen */
+                top: 0;
+                width: 800px;
+                background: white;
+                color: black;
+                padding: 20px;
+                font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            `;
 
+            // 2. Add user input bubble if it exists
             if (userBubbleToSave) {
                 const userInputHeader = document.createElement('h3');
                 userInputHeader.textContent = '我的输入';
                 pdfContent.appendChild(userInputHeader);
                 
                 const userBubbleClone = userBubbleToSave.cloneNode(true);
-                // Override styles for PDF rendering
+                // Apply inline styles to ensure correct rendering by html2canvas
                 userBubbleClone.style.cssText = `
                     padding: 15px 20px;
                     border-radius: 18px;
@@ -423,12 +431,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     background-color: #016A70;
                     color: white;
                     word-wrap: break-word;
-                    align-self: flex-start;
                 `;
-                userBubbleClone.querySelector('pre').style.color = 'white';
+                const preElement = userBubbleClone.querySelector('pre');
+                if(preElement) {
+                    preElement.style.cssText = `
+                        white-space: pre-wrap;
+                        font-family: inherit;
+                        font-size: 1rem;
+                        margin: 0;
+                        padding: 0;
+                        background: none;
+                        border: none;
+                        color: white;
+                    `;
+                }
                 pdfContent.appendChild(userBubbleClone);
             }
 
+            // 3. Add AI report content
             const reportHeader = document.createElement('h3');
             reportHeader.textContent = 'AI分析报告';
             reportHeader.style.marginTop = '20px';
@@ -436,8 +456,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const answerClone = reportToSave.cloneNode(true);
             pdfContent.appendChild(answerClone);
-
-            // Temporarily append to body to render for html2canvas
+            
+            // 4. Append to body, render, then remove. This is necessary for html2canvas to calculate layout.
             document.body.appendChild(pdfContent);
 
             const canvas = await html2canvas(pdfContent, {
@@ -446,8 +466,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 backgroundColor: '#ffffff'
             });
             
-            document.body.removeChild(pdfContent);
+            document.body.removeChild(pdfContent); // Clean up immediately after rendering
 
+            // 5. Generate and save PDF
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF({
                 orientation: 'p',
@@ -456,6 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
             pdf.save("高考志愿AI分析报告.pdf");
+
         } catch (error) {
             console.error("Failed to save PDF:", error);
             alert("保存PDF失败，请检查控制台错误信息。");
