@@ -14,10 +14,12 @@ load_dotenv() # Load environment variables from .env file
 DAILY_LIMIT = int(os.environ.get("DAILY_LIMIT", 100))
 RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", 10))
 CONTEXT_TURNS = int(os.environ.get("CONTEXT_TURNS", 3))
+LOAD_SCORE_DATA = os.environ.get("LOAD_SCORE_DATA", "true").lower() == "true"
 
 # --- File Paths ---
 DATA_DIR = '_data'
 SESSIONS_DIR = 'sessions'
+SCORE_LINES_DIR = os.path.join(DATA_DIR, 'scorelines')
 USAGE_FILE = os.path.join(DATA_DIR, 'usage.json')
 USERS_FILE = os.path.join(DATA_DIR, 'users.json')
 
@@ -74,6 +76,7 @@ def load_or_initialize_data():
 
         # Create sessions directory if it doesn't exist
         os.makedirs(SESSIONS_DIR, exist_ok=True)
+        os.makedirs(SCORE_LINES_DIR, exist_ok=True)
 
 # --- Usage & Rate Limit Helpers ---
 def get_current_usage():
@@ -141,6 +144,35 @@ def save_session_history(session_id, history):
     with open(session_file, 'w', encoding='utf-8') as f:
         json.dump(history, f, ensure_ascii=False, indent=2)
 
+def load_score_data(province, stream):
+    """Loads score line data for a given province and stream."""
+    if not LOAD_SCORE_DATA:
+        return None
+    
+    # For new gaokao, map to traditional streams
+    if "物理" in stream:
+        stream_key = "理科"
+    elif "历史" in stream:
+        stream_key = "文科"
+    else: # For provinces that don't distinguish
+        stream_key = stream
+
+    score_data = {}
+    try:
+        for filename in os.listdir(SCORE_LINES_DIR):
+            if filename.endswith('.json'):
+                filepath = os.path.join(SCORE_LINES_DIR, filename)
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    if data.get('province') == province:
+                        year = data.get('year', '未知年份')
+                        if stream_key in data.get('batches', {}):
+                            score_data[year] = data['batches'][stream_key]
+    except Exception as e:
+        print(f"Error loading score data: {e}")
+    
+    return score_data if score_data else None
+
 
 app = Flask(__name__, static_url_path='', static_folder='.')
 
@@ -152,7 +184,7 @@ def get_system_prompt():
         "**你的任务和要求:**",
         "1.  **深度思考(在`<think>`标签内)**:",
         "    *   第一步: 识别用户的核心问题和纠结的点。",
-        "    *   第二步: 基于你的知识库和用户提供的参考数据进行分析。",
+        "    *   第二步: 基于你掌握的知识，并结合用户提供的结构化参考数据（如招生计划、分数线等）进行分析。",
         "    *   第三步: 设定评估维度，并简述每个维度的评估逻辑。",
         "2.  **正式报告(在`<think>`标签外)**:",
         "    *   **创建方案PK记分卡:** 这是报告的核心！请创建一个Markdown表格，从以下维度对核心方案进行对比打分（满分5星，用 ★★★☆☆ 表示）：录取概率、学校实力/声誉、专业前景/钱景、城市发展/生活品质、个人兴趣/困惑匹配度。",
@@ -165,7 +197,7 @@ def get_system_prompt():
         "- 正式报告**必须**包含“方案PK记- 记分卡”表格。"
     ])
 
-def prepare_user_prompt(user_data, enrollment_data=None):
+def prepare_user_prompt(user_data, enrollment_data=None, score_data=None):
     """Prepares the user's input part of the prompt."""
     user_info = user_data.get('rawText', '')
     province = user_data.get('province', '未知')
@@ -184,12 +216,21 @@ def prepare_user_prompt(user_data, enrollment_data=None):
     if enrollment_data and enrollment_data.get('data'):
         enrollment_info = json.dumps(enrollment_data.get('data', {}), ensure_ascii=False, indent=2)
         prompt_parts.extend([
-            "**参考数据 (2025年最新招生计划变动，你需要结合这份数据进行分析):**",
+            "**参考数据1 (2025年最新招生计划变动):**",
             "---",
             enrollment_info,
             "---"
         ])
     
+    if score_data:
+        score_info = json.dumps(score_data, ensure_ascii=False, indent=2)
+        prompt_parts.extend([
+            "**参考数据2 (历年分数线):**",
+            "---",
+            score_info,
+            "---"
+        ])
+
     return "\n\n".join(prompt_parts)
 
 # --- Static File Routes ---
@@ -266,10 +307,10 @@ def handler():
         if session_id:
             history = load_session_history(session_id)
 
+        # Load enrollment data
         enrollment_data = None
-        load_data = os.environ.get("LOAD_ENROLLMENT_DATA", "false").lower() == "true"
-
-        if load_data:
+        load_enrollment = os.environ.get("LOAD_ENROLLMENT_DATA", "false").lower() == "true"
+        if load_enrollment:
             try:
                 enrollment_data_path = os.path.join(DATA_DIR, 'enrollment_data_2025.json')
                 with open(enrollment_data_path, 'r', encoding='utf-8') as f:
@@ -277,7 +318,10 @@ def handler():
             except FileNotFoundError:
                 print("Warning: LOAD_ENROLLMENT_DATA is true, but enrollment_data_2025.json was not found.")
         
-        user_prompt = prepare_user_prompt(user_data, enrollment_data)
+        # Load score data
+        score_data = load_score_data(user_data.get('province'), user_data.get('stream'))
+
+        user_prompt = prepare_user_prompt(user_data, enrollment_data, score_data)
 
     except FileNotFoundError:
         return jsonify({"error": "服务器内部错误：关键数据文件丢失。"}), 500
