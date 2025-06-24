@@ -367,30 +367,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createBotMessage() {
         const botMessageDiv = document.createElement('div');
+        // The 'bot-message' class now just provides margin and full-width behavior
         botMessageDiv.className = 'bot-message';
+        
         const thinkContainer = document.createElement('div');
         thinkContainer.className = 'think-container';
         thinkContainer.style.display = 'none';
+        
         const toggleThink = document.createElement('div');
         toggleThink.className = 'toggle-think';
         toggleThink.innerHTML = '展开AI思考过程 <i class="fas fa-chevron-down"></i>';
+        
         const thinkContent = document.createElement('div');
         thinkContent.className = 'think-content markdown-content';
+        
         thinkContainer.appendChild(toggleThink);
         thinkContainer.appendChild(thinkContent);
+        
         const answerContent = document.createElement('div');
         answerContent.className = 'answer-content markdown-content';
+        
         botMessageDiv.appendChild(thinkContainer);
         botMessageDiv.appendChild(answerContent);
+        
         reportContainer.appendChild(botMessageDiv);
         reportContainer.scrollTop = reportContainer.scrollHeight;
+        
         toggleThink.addEventListener('click', () => {
             thinkContent.classList.toggle('expanded');
             toggleThink.classList.toggle('expanded');
-            toggleThink.innerHTML = thinkContent.classList.contains('expanded') 
-                ? '收起AI思考过程 <i class="fas fa-chevron-down"></i>'
-                : '展开AI思考过程 <i class="fas fa-chevron-down"></i>';
+            const icon = toggleThink.querySelector('.fas');
+            if (thinkContent.classList.contains('expanded')) {
+                toggleThink.innerHTML = '收起AI思考过程 <i class="fas fa-chevron-up"></i>';
+            } else {
+                toggleThink.innerHTML = '展开AI思考过程 <i class="fas fa-chevron-down"></i>';
+            }
         });
+        
         return { thinkContainer, thinkContent, answerContent };
     }
 

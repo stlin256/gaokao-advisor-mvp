@@ -389,49 +389,59 @@ textarea { min-height: 80px; resize: vertical; }
     100% { background-position: 0% 50%; }
 }
 /* --- Chat Bubble Styles --- */
-.user-message, .bot-message {
+.user-message {
     padding: 15px 20px;
     border-radius: 18px;
-    margin-bottom: 15px;
-    max-width: 85%;
-    position: relative;
-    word-wrap: break-word;
-}
-
-.user-message {
-    background-color: #007bff;
+    margin-bottom: 25px; /* Increased margin to make space for the "You" label */
+    max-width: 80%;
+    background-color: var(--nc-primary); /* Use theme color */
     color: white;
     align-self: flex-end;
     border-bottom-right-radius: 4px;
+    position: relative;
+    word-wrap: break-word;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    animation: slide-in 0.4s ease-out;
 }
 
+/* .bot-message is already styled as a full-width container, so we just adjust margin */
 .bot-message {
-    background-color: #3a3a3c;
-    color: #e5e5ea;
-    align-self: flex-start;
-    border-bottom-left-radius: 4px;
+    margin-bottom: 1rem;
 }
 
-.user-message::before, .bot-message::before {
-    content: attr(data-role);
+.user-message pre {
+    white-space: pre-wrap;
+    font-family: inherit;
+    font-size: 1rem;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    color: white;
+}
+
+.user-message::before {
+    content: '您的输入';
     font-weight: bold;
     font-size: 0.8em;
     position: absolute;
     top: -20px;
-    color: #8e8e93;
-}
-
-.user-message::before {
-    content: 'You';
     right: 0;
-}
-
-.bot-message::before {
-    content: 'AI Advisor';
-    left: 0;
+    color: var(--text-dark-secondary);
 }
 
 #report-container {
     display: flex;
     flex-direction: column;
+}
+
+@keyframes slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
