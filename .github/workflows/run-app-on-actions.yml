@@ -39,6 +39,7 @@ jobs:
           # We mount the _data directory to allow the app to write back to the host
           docker run -d --name gaokao-app \
             -v $(pwd)/_data:/app/_data \
+            -v $(pwd)/sessions:/app/sessions \
             -e PORT=${PORT} \
             -e OPENAI_API_KEY=${OPENAI_API_KEY} \
             -e OPENAI_API_BASE=${OPENAI_API_BASE} \
@@ -74,12 +75,13 @@ jobs:
           git config --global user.email 'actions-bot@github.com'
           
           # Check if the usage file has changed
-          if ! git diff --quiet _data/usage.json; then
-            echo "Usage file has changed. Committing and pushing..."
-            git add _data/usage.json
+          # Check if any tracked files have changed
+          if ! git diff --quiet _data/usage.json sessions/; then
+            echo "Data or session files have changed. Committing and pushing..."
+            git add _data/usage.json sessions/
             # Use [skip ci] to prevent triggering a new workflow run
-            git commit -m "chore: Update usage data [skip ci]"
+            git commit -m "chore: Update usage and session data [skip ci]"
             git push
           else
-            echo "No changes in usage file. Nothing to commit."
+            echo "No changes in data files. Nothing to commit."
           fi
