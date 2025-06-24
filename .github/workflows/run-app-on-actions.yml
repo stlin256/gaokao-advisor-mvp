@@ -10,14 +10,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+      - name: Build Docker image
+        run: docker build -t gaokao-advisor .
 
       - name: Download and setup ngrok
         run: |
@@ -31,7 +25,7 @@ jobs:
         env:
           NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
 
-      - name: Run App in background and expose with ngrok
+      - name: Run Docker container and expose with ngrok
         env:
           # These secrets must be configured in your repository settings
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -40,12 +34,24 @@ jobs:
           LOAD_ENROLLMENT_DATA: "true"
           PORT: 5000
         run: |
-          # Start gunicorn in the background
-          gunicorn -k gevent --bind 0.0.0.0:5000 app:app &
-          # Start ngrok tunnel in the background
-          ngrok http 5000 --log=stdout > ngrok.log &
-          # Wait a few seconds for ngrok to start
+          # Run the Docker container in detached mode
+          # We pass the secrets as environment variables to the container
+          docker run -d --name gaokao-app \
+            -e PORT=${PORT} \
+            -e OPENAI_API_KEY=${OPENAI_API_KEY} \
+            -e OPENAI_API_BASE=${OPENAI_API_BASE} \
+            -e REDIS_URL=${REDIS_URL} \
+            -e LOAD_ENROLLMENT_DATA=${LOAD_ENROLLMENT_DATA} \
+            -p ${PORT}:${PORT} \
+            gaokao-advisor
+
+          # Wait a few seconds for the container to start
+          sleep 10
+
+          # Start ngrok tunnel to expose the container's port
+          ngrok http ${PORT} --log=stdout > ngrok.log &
           sleep 5
+
           # Extract the public URL from the ngrok log and print it
           echo "----------------------------------------------------------------"
           echo "Your temporary URL is:"
