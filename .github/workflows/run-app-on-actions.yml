@@ -1,0 +1,57 @@
+name: (HACK) Run App on Actions
+
+on:
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  run-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Download and setup ngrok
+        run: |
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+          sudo apt update
+          sudo apt install ngrok
+
+      - name: Authenticate ngrok
+        run: ngrok config add-authtoken ${{ secrets.NGROK_AUTHTOKEN }}
+        env:
+          NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
+
+      - name: Run App in background and expose with ngrok
+        env:
+          # These secrets must be configured in your repository settings
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          LOAD_ENROLLMENT_DATA: "true"
+          PORT: 5000
+        run: |
+          # Start gunicorn in the background
+          gunicorn -k gevent --bind 0.0.0.0:5000 app:app &
+          # Start ngrok tunnel in the background
+          ngrok http 5000 --log=stdout > ngrok.log &
+          # Wait a few seconds for ngrok to start
+          sleep 5
+          # Extract the public URL from the ngrok log and print it
+          echo "----------------------------------------------------------------"
+          echo "Your temporary URL is:"
+          grep -o 'url=https://[a-zA-Z0-9.-]*\.ngrok-free\.app' ngrok.log | sed 's/url=//'
+          echo "----------------------------------------------------------------"
+          echo "NOTE: This job will be terminated after a few hours."
+          echo "This is NOT a real hosting solution."
+          # Keep the job alive
+          sleep 21000 # Keep alive for just under 6 hours
