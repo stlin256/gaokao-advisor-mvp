@@ -214,6 +214,18 @@ def get_usage():
     except Exception as e:
         return jsonify({"used": "N/A", "limit": "N/A", "error": str(e)}), 500
 
+@app.route('/api/verify_code', methods=['POST'])
+def verify_code():
+    body = request.get_json(silent=True)
+    if not body or 'invitationCode' not in body:
+        return jsonify({"success": False, "error": "无效的请求格式。"}), 400
+    
+    invitation_code = body.get('invitationCode')
+    if invitation_code in valid_invitation_codes:
+        return jsonify({"success": True})
+    else:
+        return jsonify({"success": False, "error": "无效的邀请码。"}), 403
+
 @app.route('/api/handler', methods=['POST'])
 def handler():
     # --- Security & Rate Limiting ---
