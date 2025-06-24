@@ -287,22 +287,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderLive(text, thinkContainer, thinkContent, answerContent) {
-        const thinkBlockRegex = /<think>([\s\S]*)<\/think>/;
-        const thinkMatch = text.match(thinkBlockRegex);
+        const thinkStartTag = '<think>';
+        const thinkEndTag = '</think>';
         
         let currentAnswer = text;
         let currentThink = "";
+        let isThinking = text.includes(thinkStartTag) && !text.includes(thinkEndTag);
+        let thinkingFinished = text.includes(thinkEndTag);
 
-        if (thinkMatch) {
-            // A complete <think>...</think> block exists.
-            currentThink = thinkMatch[1];
-            // The answer is whatever is AFTER the think block.
-            currentAnswer = text.substring(text.indexOf('</think>') + 8);
-        } else if (text.includes('<think>')) {
-            // The <think> tag has appeared, but not the closing tag.
-            // All content so far is part of the thinking process.
-            currentThink = text.substring(text.indexOf('<think>') + 7);
+        if (thinkingFinished) {
+            const thinkContentMatch = text.match(/<think>([\s\S]*)<\/think>/);
+            currentThink = thinkContentMatch ? thinkContentMatch[1] : "";
+            currentAnswer = text.substring(text.indexOf(thinkEndTag) + thinkEndTag.length);
+            if (thinkContent.classList.contains('expanded')) {
+                thinkContent.classList.remove('expanded');
+                thinkContainer.querySelector('.toggle-think').classList.remove('expanded');
+            }
+        } else if (isThinking) {
+            currentThink = text.substring(text.indexOf(thinkStartTag) + thinkStartTag.length);
             currentAnswer = ""; // No answer to display yet.
+            if (!thinkContent.classList.contains('expanded')) {
+                thinkContent.classList.add('expanded');
+                thinkContainer.querySelector('.toggle-think').classList.add('expanded');
+            }
         }
 
         // Render the thinking part
