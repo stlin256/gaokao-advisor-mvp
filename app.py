@@ -1,7 +1,7 @@
 import os
 import json
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from flask import Flask, request, jsonify, send_from_directory, Response
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -16,11 +16,16 @@ usage_data = {}
 file_lock = threading.Lock()
 
 # --- File-based Usage Counter ---
+def get_beijing_today_str():
+    """Gets the current date string in Beijing Time (UTC+8)."""
+    beijing_tz = timezone(timedelta(hours=8))
+    return datetime.now(beijing_tz).strftime('%Y-%m-%d')
+
 def load_or_initialize_usage():
     """Loads usage data from file, or initializes if not present/outdated."""
     global usage_data
     with file_lock:
-        today_str = datetime.utcnow().strftime('%Y-%m-%d')
+        today_str = get_beijing_today_str()
         try:
             if os.path.exists(USAGE_FILE):
                 with open(USAGE_FILE, 'r') as f:
@@ -42,7 +47,7 @@ def load_or_initialize_usage():
 
 def get_current_usage():
     """Gets the current usage count for today."""
-    today_str = datetime.utcnow().strftime('%Y-%m-%d')
+    today_str = get_beijing_today_str()
     # Check if date has changed since last load
     if today_str not in usage_data:
         load_or_initialize_usage()
@@ -50,8 +55,9 @@ def get_current_usage():
 
 def increment_usage():
     """Increments usage count and writes to file."""
+    global usage_data
     with file_lock:
-        today_str = datetime.utcnow().strftime('%Y-%m-%d')
+        today_str = get_beijing_today_str()
         # Ensure we are on the correct day
         if today_str not in usage_data:
             usage_data = {today_str: 1}
