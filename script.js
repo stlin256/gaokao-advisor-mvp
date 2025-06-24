@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dilemmaInput = document.getElementById('dilemma-input');
     const dilemmaTags = document.querySelector('.dilemma-tags');
     const savePdfBtn = document.getElementById('save-pdf-btn');
-    const invitationCodeInput = document.getElementById('invitation-code'); // Assuming you have this input
+    const invitationCodeInput = document.getElementById('invitation-code');
 
     // --- Initial State ---
     fetchInitialUsage();
@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Main Handler Functions ---
     async function handleSubmit() {
         const userInput = await getUserInput();
-        if (!userInput) return; // Validation failed in getUserInput
+        if (!userInput) return;
 
         const invitationCode = invitationCodeInput.value.trim();
         if (!invitationCode) {
@@ -165,8 +165,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         savePdfBtn.style.display = 'none';
         answerContent.innerHTML = '<div class="typing-cursor"></div>';
 
-        let isThinking = true;
-        let fullResponse = "";
+        let mode = 'thinking';
+        let thinkAccumulator = '';
+        let answerAccumulator = '';
 
         try {
             const response = await fetch('/api/handler', {
@@ -209,26 +210,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (message.startsWith('event: message')) {
                         const data = message.substring(message.indexOf('data: ') + 6);
                         try {
-                            const token = JSON.parse(data);
-                            fullResponse += token;
-
-                            // Real-time rendering logic
-                            if (isThinking) {
-                                if (fullResponse.includes('</think>')) {
-                                    isThinking = false;
-                                    const thinkPart = fullResponse.match(/<think>([\s\S]*)<\/think>/)[1];
-                                    const answerPart = fullResponse.substring(fullResponse.indexOf('</think>') + 8);
-                                    thinkContent.innerHTML = marked.parse(thinkPart);
-                                    answerContent.innerHTML = marked.parse(answerPart);
+                            let token = JSON.parse(data);
+                            
+                            if (mode === 'thinking') {
+                                if (token.includes('</think>')) {
+                                    const parts = token.split('</think>');
+                                    thinkAccumulator += parts[0];
+                                    answerAccumulator += parts[1];
+                                    mode = 'answering';
                                 } else {
-                                    const thinkPart = fullResponse.replace('<think>', '');
-                                    thinkContent.innerHTML = marked.parse(thinkPart) + '<span class="typing-cursor"></span>';
-                                    thinkContainer.style.display = 'block';
+                                    thinkAccumulator += token;
                                 }
                             } else {
-                                const answerPart = fullResponse.substring(fullResponse.indexOf('</think>') + 8);
-                                answerContent.innerHTML = marked.parse(answerPart) + '<span class="typing-cursor"></span>';
+                                answerAccumulator += token;
                             }
+
+                            const finalThink = thinkAccumulator.replace('<think>', '');
+                            if (finalThink) {
+                                thinkContainer.style.display = 'block';
+                                thinkContent.innerHTML = marked.parse(finalThink);
+                            }
+                            
+                            answerContent.innerHTML = marked.parse(answerAccumulator);
+
+                            // Update cursor
+                            const cursorTarget = mode === 'thinking' ? thinkContent : answerContent;
+                            document.querySelectorAll('.typing-cursor').forEach(c => c.remove());
+                            cursorTarget.innerHTML += '<span class="typing-cursor"></span>';
+                            
                             reportContainer.scrollTop = reportContainer.scrollHeight;
 
                         } catch (e) { console.error("Failed to parse token:", data); }
@@ -238,17 +247,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                             updateUsage(JSON.parse(data));
                         } catch (e) { console.error("Failed to parse usage data:", data); }
                     } else if (message.startsWith('event: end')) {
-                        // Final cleanup
-                        answerContent.querySelector('.typing-cursor')?.remove();
-                        thinkContent.querySelector('.typing-cursor')?.remove();
+                        document.querySelectorAll('.typing-cursor').forEach(c => c.remove());
                         savePdfBtn.style.display = 'inline-block';
                         submitButton.disabled = false;
                         return; 
                     } else if (message.startsWith('event: error')) {
                         const data = message.substring(message.indexOf('data: ') + 6);
                         try {
-                            const errorData = JSON.parse(data);
-                            answerContent.innerHTML = `<pre style="color:red;">${JSON.stringify(errorData, null, 2)}</pre>`;
+                            answerContent.innerHTML = `<pre style="color:red;">${JSON.stringify(JSON.parse(data), null, 2)}</pre>`;
                         } catch(e) {
                             answerContent.innerHTML = `<pre style="color:red;">${data}</pre>`;
                         }
@@ -264,8 +270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             answerContent.innerHTML = `<pre style="color:red;">网络请求失败: ${error.message}</pre>`;
         } finally {
             submitButton.disabled = false;
-            answerContent.querySelector('.typing-cursor')?.remove();
-            thinkContent.querySelector('.typing-cursor')?.remove();
+            document.querySelectorAll('.typing-cursor').forEach(c => c.remove());
         }
     }
 
