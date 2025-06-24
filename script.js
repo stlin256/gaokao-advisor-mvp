@@ -402,62 +402,42 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const { jsPDF } = window.jspdf;
             
-            // 1. Create a container for PDF content that is NOT attached to the DOM
+            // Fetch the entire stylesheet content
+            const styleSheetText = await fetch('style.css').then(res => res.text());
+
+            // Create a container for PDF content
             const pdfContent = document.createElement('div');
             pdfContent.style.cssText = `
-                position: absolute;
-                left: -9999px; /* Position off-screen */
-                top: 0;
                 width: 800px;
                 background: white;
                 color: black;
                 padding: 20px;
-                font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
             `;
 
-            // 2. Add user input bubble if it exists
+            // Inject all styles directly into the container
+            const styleElement = document.createElement('style');
+            styleElement.innerHTML = styleSheetText;
+            pdfContent.appendChild(styleElement);
+
+            // Add user input bubble if it exists
             if (userBubbleToSave) {
                 const userInputHeader = document.createElement('h3');
                 userInputHeader.textContent = '我的输入';
                 pdfContent.appendChild(userInputHeader);
-                
-                const userBubbleClone = userBubbleToSave.cloneNode(true);
-                // Apply inline styles to ensure correct rendering by html2canvas
-                userBubbleClone.style.cssText = `
-                    padding: 15px 20px;
-                    border-radius: 18px;
-                    margin-bottom: 25px;
-                    max-width: 80%;
-                    background-color: #016A70;
-                    color: white;
-                    word-wrap: break-word;
-                `;
-                const preElement = userBubbleClone.querySelector('pre');
-                if(preElement) {
-                    preElement.style.cssText = `
-                        white-space: pre-wrap;
-                        font-family: inherit;
-                        font-size: 1rem;
-                        margin: 0;
-                        padding: 0;
-                        background: none;
-                        border: none;
-                        color: white;
-                    `;
-                }
-                pdfContent.appendChild(userBubbleClone);
+                pdfContent.appendChild(userBubbleToSave.cloneNode(true));
             }
 
-            // 3. Add AI report content
+            // Add AI report content
             const reportHeader = document.createElement('h3');
             reportHeader.textContent = 'AI分析报告';
             reportHeader.style.marginTop = '20px';
             pdfContent.appendChild(reportHeader);
-
-            const answerClone = reportToSave.cloneNode(true);
-            pdfContent.appendChild(answerClone);
+            pdfContent.appendChild(reportToSave.cloneNode(true));
             
-            // 4. Append to body, render, then remove. This is necessary for html2canvas to calculate layout.
+            // Position the container off-screen before appending to the body
+            pdfContent.style.position = 'absolute';
+            pdfContent.style.left = '-9999px';
+            pdfContent.style.top = '0';
             document.body.appendChild(pdfContent);
 
             const canvas = await html2canvas(pdfContent, {
@@ -466,9 +446,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 backgroundColor: '#ffffff'
             });
             
-            document.body.removeChild(pdfContent); // Clean up immediately after rendering
+            document.body.removeChild(pdfContent); // Clean up
 
-            // 5. Generate and save PDF
+            // Generate and save PDF
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF({
                 orientation: 'p',
