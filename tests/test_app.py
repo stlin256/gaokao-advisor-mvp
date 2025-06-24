@@ -10,6 +10,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from app import app, kv, DAILY_LIMIT, prepare_prompt, get_daily_key
 from datetime import datetime
 
+class MockDateTime(datetime):
+    @classmethod
+    def utcnow(cls):
+        return datetime(2025, 6, 24, 12, 0, 0)
+
 @pytest.fixture
 def client():
     """Create a test client for the Flask app."""
@@ -20,10 +25,8 @@ def client():
 @pytest.fixture
 def mock_datetime(mocker):
     """Fixture to mock datetime.utcnow to a fixed date."""
-    mock_now = datetime(2025, 6, 24, 12, 0, 0)
-    mocker.patch('app.datetime')
-    app.datetime.utcnow.return_value = mock_now
-    return mock_now
+    mocker.patch('app.datetime', new=MockDateTime)
+    return MockDateTime.utcnow()
 
 @pytest.fixture(autouse=True)
 def mock_redis(mocker, mock_datetime):

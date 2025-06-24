@@ -336,6 +336,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (response.ok) {
                 const data = await response.json();
                 updateUsage(data);
+                if (data.used >= data.limit) {
+                    alert("非常抱歉，今日的免费体验名额已被抢完！请您明日再来。");
+                    if(submitButton) submitButton.disabled = true;
+                }
             }
         } catch (error) {
             console.error("Failed to fetch initial usage:", error);
