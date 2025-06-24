@@ -86,6 +86,8 @@ V1.1版本在原基础上，新增了**邀请码认证**、**多轮对话**、**
 1.  **Fork本项目**: 将此仓库Fork到您自己的GitHub账户下。
 2.  **注册ngrok**: 访问 [ngrok.com](https://ngrok.com) 注册一个免费账户，并在仪表板中找到您的 **Authtoken**。
 
+![token](images/token.png)
+
 ### 配置步骤
 进入您Fork后的GitHub仓库页面，点击 `Settings` -> `Secrets and variables` -> `Actions`，然后点击 `New repository secret` 添加以下 **Secrets**：
 
@@ -101,7 +103,9 @@ V1.1版本在原基础上，新增了**邀请码认证**、**多轮对话**、**
 1.  **进入Actions页面**: 在您的仓库页面，点击 `Actions` 标签页。
 2.  **选择工作流**: 在左侧边栏，点击 `Run App`。
 3.  **手动触发**: 点击 `Run workflow` 按钮。
-4.  **获取访问链接**: 等待约1-2分钟，待工作流运行起来后，进入[https://dashboard.ngrok.com/agents](https://dashboard.ngrok.com/agents)即可查看链接。
+4.  **获取访问链接**: 等待约1-2分钟，待工作流运行起来后，在action日志即可查看：`
+Your temporary URL is:
+https://xxxxx.ngrok-free.app`或进入[https://dashboard.ngrok.com/agents](https://dashboard.ngrok.com/agents)即可查看链接。
 
 **重要提示**:
 - 每个任务最长运行6小时，之后服务会自动关闭。
