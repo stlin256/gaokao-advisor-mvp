@@ -245,6 +245,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const { thinkContainer, thinkContent, answerContent } = botMessageDiv;
         
         submitButton.disabled = true;
+        submitButton.classList.add('loading');
+        submitButton.innerHTML = '<i class="fas fa-brain"></i> AI正在深度思考中...';
         savePdfBtn.style.display = 'none';
         answerContent.innerHTML = '<div class="typing-cursor"></div>';
 
@@ -267,7 +269,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const errorData = await response.json();
                 if (errorData.usage) updateUsage(errorData.usage);
                 answerContent.innerHTML = `<pre style="color:red;">${errorData.error}</pre>`;
-                submitButton.disabled = false;
                 return;
             }
 
@@ -331,8 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (message.startsWith('event: end')) {
                         document.querySelectorAll('.typing-cursor').forEach(c => c.remove());
                         savePdfBtn.style.display = 'inline-block';
-                        submitButton.disabled = false;
-                        return; 
+                        return;
                     } else if (message.startsWith('event: error')) {
                         const data = message.substring(message.indexOf('data: ') + 6);
                         try {
@@ -340,8 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         } catch(e) {
                             answerContent.innerHTML = `<pre style="color:red;">${data}</pre>`;
                         }
-                        submitButton.disabled = false;
-                        return; 
+                        return;
                     }
                     boundary = buffer.indexOf('\n\n');
                 }
@@ -352,6 +351,8 @@ document.addEventListener('DOMContentLoaded', () => {
             answerContent.innerHTML = `<pre style="color:red;">网络请求失败: ${error.message}</pre>`;
         } finally {
             submitButton.disabled = false;
+            submitButton.classList.remove('loading');
+            submitButton.innerHTML = '<i class="fas fa-paper-plane"></i> 生成分析报告';
             document.querySelectorAll('.typing-cursor').forEach(c => c.remove());
         }
     }
