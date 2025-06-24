@@ -144,54 +144,15 @@ def save_session_history(session_id, history):
 
 app = Flask(__name__, static_url_path='', static_folder='.')
 
-def prepare_prompt(user_data, history, enrollment_data=None):
-    user_info = user_data.get('rawText', '')
-    province = user_data.get('province', '未知')
-    rank = user_data.get('rank', '未知')
-
-    # Base prompt structure
-    prompt_parts = [
+def get_system_prompt():
+    """Generates the static system prompt for the AI."""
+    return "\n\n".join([
         "你是一位顶级的、资深的、充满智慧的高考志愿填报专家。你的任务是为一位正在纠结中的高三学生或家长，提供一份专业、客观、有深度、有温度的志愿对比分析报告。",
-        "**重要指令**: 在你输出最终的分析报告之前，请务必先进行一步深度思考。将你的思考过程、分析逻辑、以及数据检索的步骤，完整地包含在 `<think>` 和 `</think>` 标签之间。这部分内容是给专业用户看的，可以帮助他们理解你的决策过程。思考结束后，再输出面向用户的、完整的Markdown格式报告。"
-    ]
-
-    # Add conversation history if it exists
-    if history:
-        prompt_parts.append("**历史对话上下文:**")
-        prompt_parts.append("---")
-        for message in history:
-            role = "用户" if message["role"] == "user" else "专家"
-            prompt_parts.append(f"**{role}:** {message['content']}")
-        prompt_parts.append("---")
-        prompt_parts.append("\n**基于以上对话，请继续下面的分析。**\n")
-
-
-    prompt_parts.extend([
-        "**学生背景:**",
-        f"- 省份: {province}",
-        f"- 分数/位次: {rank}",
-        "- 他本次的原始笔记和困惑如下:",
-        "---",
-        user_info,
-        "---"
-    ])
-
-    # Conditionally add enrollment data section
-    if enrollment_data and enrollment_data.get('data'):
-        enrollment_info = json.dumps(enrollment_data.get('data', {}), ensure_ascii=False, indent=2)
-        prompt_parts.extend([
-            "**参考数据 (2025年最新招生计划变动，你需要结合这份数据进行分析):**",
-            "---",
-            enrollment_info,
-            "---"
-        ])
-
-    # Add the rest of the prompt
-    prompt_parts.extend([
+        "**重要指令**: 在你输出最终的分析报告之前，请务必先进行一步深度思考。将你的思考过程、分析逻辑、以及数据检索的步骤，完整地包含在 `<think>` 和 `</think>` 标签之间。这部分内容是给专业用户看的，可以帮助他们理解你的决策过程。思考结束后，再输出面向用户的、完整的Markdown格式报告。",
         "**你的任务和要求:**",
         "1.  **深度思考(在`<think>`标签内)**:",
         "    *   第一步: 识别用户的核心问题和纠结的点。",
-        "    *   第二步: 检索并列出与用户方案相关的招生计划变动数据。" if enrollment_data else "    *   第二步: 基于你的知识库进行分析。",
+        "    *   第二步: 基于你的知识库和用户提供的参考数据进行分析。",
         "    *   第三步: 设定评估维度，并简述每个维度的评估逻辑。",
         "2.  **正式报告(在`<think>`标签外)**:",
         "    *   **创建方案PK记分卡:** 这是报告的核心！请创建一个Markdown表格，从以下维度对核心方案进行对比打分（满分5星，用 ★★★☆☆ 表示）：录取概率、学校实力/声誉、专业前景/钱景、城市发展/生活品质、个人兴趣/困惑匹配度。",
@@ -203,6 +164,31 @@ def prepare_prompt(user_data, history, enrollment_data=None):
         "- 正式报告**必须**是完整的Markdown格式。",
         "- 正式报告**必须**包含“方案PK记- 记分卡”表格。"
     ])
+
+def prepare_user_prompt(user_data, enrollment_data=None):
+    """Prepares the user's input part of the prompt."""
+    user_info = user_data.get('rawText', '')
+    province = user_data.get('province', '未知')
+    rank = user_data.get('rank', '未知')
+
+    prompt_parts = [
+        "**学生背景:**",
+        f"- 省份: {province}",
+        f"- 分数/位次: {rank}",
+        "- 他本次的原始笔记和困惑如下:",
+        "---",
+        user_info,
+        "---"
+    ]
+
+    if enrollment_data and enrollment_data.get('data'):
+        enrollment_info = json.dumps(enrollment_data.get('data', {}), ensure_ascii=False, indent=2)
+        prompt_parts.extend([
+            "**参考数据 (2025年最新招生计划变动，你需要结合这份数据进行分析):**",
+            "---",
+            enrollment_info,
+            "---"
+        ])
     
     return "\n\n".join(prompt_parts)
 
@@ -279,7 +265,7 @@ def handler():
             except FileNotFoundError:
                 print("Warning: LOAD_ENROLLMENT_DATA is true, but enrollment_data_2025.json was not found.")
         
-        prompt = prepare_prompt(user_data, history, enrollment_data)
+        user_prompt = prepare_user_prompt(user_data, enrollment_data)
 
     except FileNotFoundError:
         return jsonify({"error": "服务器内部错误：关键数据文件丢失。"}), 500
@@ -295,7 +281,10 @@ def handler():
             yield f"event: usage\ndata: {json.dumps({'used': new_usage, 'limit': DAILY_LIMIT})}\n\n"
 
             # --- Prepare messages for OpenAI API, including history ---
-            messages_for_api = history[-CONTEXT_TURNS*2:] + [{"role": "user", "content": p}]
+            system_prompt = get_system_prompt()
+            messages_for_api = [{"role": "system", "content": system_prompt}]
+            messages_for_api.extend(history[-CONTEXT_TURNS*2:])
+            messages_for_api.append({"role": "user", "content": user_prompt})
 
             # --- Stream response from OpenAI ---
             api_key = os.environ.get("OPENAI_API_KEY")
@@ -315,17 +304,24 @@ def handler():
             )
 
             # --- Handle streaming and save history ---
-            assistant_response = ""
+            assistant_response_full = ""
             for chunk in stream:
                 content = chunk.choices[0].delta.content
                 if content:
-                    assistant_response += content
+                    assistant_response_full += content
                     yield f"event: message\ndata: {json.dumps(content)}\n\n"
             
             if session_id:
+                # Strip the <think> block before saving to history
+                assistant_response_clean = assistant_response_full
+                think_start = assistant_response_full.find('<think>')
+                think_end = assistant_response_full.find('</think>')
+                if think_start != -1 and think_end != -1:
+                    assistant_response_clean = assistant_response_full[think_end + len('</think>'):].strip()
+
                 new_history = history + [
                     {"role": "user", "content": user_data.get('rawText', '')},
-                    {"role": "assistant", "content": assistant_response}
+                    {"role": "assistant", "content": assistant_response_clean}
                 ]
                 save_session_history(session_id, new_history)
 

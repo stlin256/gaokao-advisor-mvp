@@ -1,6 +1,9 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // --- Autocomplete Data Loading ---
+    // --- Global State ---
     let suggestions = [];
+    let sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+    // --- Autocomplete Data Loading ---
     try {
         const response = await fetch('_data/enrollment_data_2025.json');
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -24,7 +27,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const submitButton = document.getElementById('submit-button');
     const reportContainer = document.getElementById('report-container');
     const submissionArea = document.querySelector('.submission-area');
-    const reportMainArea = document.querySelector('.report-main-area');
     const submissionHeader = document.getElementById('submission-header');
     const rankInput = document.getElementById('rank-input');
     const rankSlider = document.getElementById('rank-slider');
@@ -34,6 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dilemmaInput = document.getElementById('dilemma-input');
     const dilemmaTags = document.querySelector('.dilemma-tags');
     const savePdfBtn = document.getElementById('save-pdf-btn');
+    const invitationCodeInput = document.getElementById('invitation-code'); // Assuming you have this input
 
     // --- Initial State ---
     fetchInitialUsage();
@@ -46,17 +49,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const newGaokaoOptions = document.getElementById('new-gaokao-options');
     
     mainStreamGroup.addEventListener('change', (e) => {
-        if (e.target.value === '新高考') {
-            newGaokaoOptions.style.display = 'block';
-        } else {
-            newGaokaoOptions.style.display = 'none';
-        }
+        newGaokaoOptions.style.display = e.target.value === '新高考' ? 'block' : 'none';
     });
 
     const secondChoiceGroup = document.getElementById('second-choice-group');
     secondChoiceGroup.addEventListener('change', (e) => {
-        const checkedBoxes = secondChoiceGroup.querySelectorAll('input[type="checkbox"]:checked');
-        if (checkedBoxes.length > 2) {
+        if (secondChoiceGroup.querySelectorAll('input[type="checkbox"]:checked').length > 2) {
             alert('再选科目最多只能选择两项。');
             e.target.checked = false;
         }
@@ -64,9 +62,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (rankInput && rankSlider && rankSliderValue) {
         rankSlider.addEventListener('input', (e) => {
-            const value = e.target.value;
-            rankInput.value = value;
-            rankSliderValue.textContent = value;
+            rankInput.value = e.target.value;
+            rankSliderValue.textContent = e.target.value;
         });
         rankInput.addEventListener('input', (e) => {
             const value = e.target.value;
@@ -80,31 +77,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (scoreTypeGroup) {
         scoreTypeGroup.addEventListener('change', (e) => {
             const type = e.target.value;
-            if (type === 'score') {
-                rankInput.placeholder = "例如: 650";
-                rankSlider.min = 150;
-                rankSlider.max = 750;
-                rankSlider.step = 1;
-                rankSlider.value = 500;
-                rankSliderValue.textContent = 500;
-                rankInput.value = 500;
-            } else { // rank
-                rankInput.placeholder = "例如: 12000";
-                rankSlider.min = 1;
-                rankSlider.max = 750000;
-                rankSlider.step = 100;
-                rankSlider.value = 100000;
-                rankSliderValue.textContent = 100000;
-                rankInput.value = 100000;
-            }
+            const isScore = type === 'score';
+            rankInput.placeholder = isScore ? "例如: 650" : "例如: 12000";
+            rankSlider.min = isScore ? 150 : 1;
+            rankSlider.max = isScore ? 750 : 750000;
+            rankSlider.step = isScore ? 1 : 100;
+            const defaultValue = isScore ? 500 : 100000;
+            rankSlider.value = defaultValue;
+            rankSliderValue.textContent = defaultValue;
+            rankInput.value = defaultValue;
         });
     }
 
     if (dilemmaTags) {
         dilemmaTags.addEventListener('click', (e) => {
             if (e.target.classList.contains('tag-btn')) {
-                const tagText = e.target.textContent;
-                dilemmaInput.value += (dilemmaInput.value ? '，' : '') + tagText;
+                dilemmaInput.value += (dilemmaInput.value ? '，' : '') + e.target.textContent;
             }
         });
     }
@@ -120,10 +108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             minChars: 1,
             source: function(term, suggest){
                 term = term.toLowerCase();
-                const choices = suggestions;
-                const matches = [];
-                for (let i=0; i<choices.length; i++)
-                    if (~choices[i].toLowerCase().indexOf(term)) matches.push(choices[i]);
+                const matches = suggestions.filter(choice => choice.toLowerCase().includes(term));
                 suggest(matches);
             }
         });
@@ -136,7 +121,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!isMobile()) return;
 
-        // Initial state: show submission area
         submissionArea.classList.remove('collapsed');
         updateCollapseIcons();
 
@@ -147,13 +131,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         function updateCollapseIcons() {
             const subIcon = submissionHeader.querySelector('.collapse-icon');
-            
             subIcon.className = submissionArea.classList.contains('collapsed')
                 ? 'fas fa-chevron-down collapse-icon'
                 : 'fas fa-chevron-up collapse-icon';
         }
 
-        // Hook into the submit handler
         window.originalHandleSubmit = handleSubmit;
         window.handleSubmit = async function() {
             if (isMobile() && firstSubmit) {
@@ -168,23 +150,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Main Handler Functions ---
     async function handleSubmit() {
         const userInput = await getUserInput();
-        if (!userInput || (userInput.rawText && !userInput.rawText.trim())) {
-             alert("输入内容不能为空，请填写或上传您的方案。");
-             return;
+        if (!userInput) return; // Validation failed in getUserInput
+
+        const invitationCode = invitationCodeInput.value.trim();
+        if (!invitationCode) {
+            alert("请输入邀请码。");
+            return;
         }
 
         const botMessageDiv = createBotMessage();
-        const { thinkContainer, thinkContent, answerContent, toggleThink } = botMessageDiv;
+        const { thinkContainer, thinkContent, answerContent } = botMessageDiv;
         
         submitButton.disabled = true;
         savePdfBtn.style.display = 'none';
         answerContent.innerHTML = '<div class="typing-cursor"></div>';
 
+        let isThinking = true;
+        let fullResponse = "";
+
         try {
             const response = await fetch('/api/handler', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userInput })
+                body: JSON.stringify({ 
+                    userInput,
+                    sessionId,
+                    invitationCode
+                })
             });
 
             if (response.headers.get("Content-Type")?.includes("application/json")) {
@@ -202,7 +194,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
-            let fullReport = "";
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -219,17 +210,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const data = message.substring(message.indexOf('data: ') + 6);
                         try {
                             const token = JSON.parse(data);
-                            fullReport += token;
-                            renderLive(fullReport, thinkContainer, thinkContent, answerContent);
+                            fullResponse += token;
+
+                            // Real-time rendering logic
+                            if (isThinking) {
+                                if (fullResponse.includes('</think>')) {
+                                    isThinking = false;
+                                    const thinkPart = fullResponse.match(/<think>([\s\S]*)<\/think>/)[1];
+                                    const answerPart = fullResponse.substring(fullResponse.indexOf('</think>') + 8);
+                                    thinkContent.innerHTML = marked.parse(thinkPart);
+                                    answerContent.innerHTML = marked.parse(answerPart);
+                                } else {
+                                    const thinkPart = fullResponse.replace('<think>', '');
+                                    thinkContent.innerHTML = marked.parse(thinkPart) + '<span class="typing-cursor"></span>';
+                                    thinkContainer.style.display = 'block';
+                                }
+                            } else {
+                                const answerPart = fullResponse.substring(fullResponse.indexOf('</think>') + 8);
+                                answerContent.innerHTML = marked.parse(answerPart) + '<span class="typing-cursor"></span>';
+                            }
+                            reportContainer.scrollTop = reportContainer.scrollHeight;
+
                         } catch (e) { console.error("Failed to parse token:", data); }
                     } else if (message.startsWith('event: usage')) {
                         const data = message.substring(message.indexOf('data: ') + 6);
                         try {
-                            const usageData = JSON.parse(data);
-                            updateUsage(usageData);
+                            updateUsage(JSON.parse(data));
                         } catch (e) { console.error("Failed to parse usage data:", data); }
                     } else if (message.startsWith('event: end')) {
-                        processAndRenderFinalReport(fullReport, thinkContainer, thinkContent, answerContent);
+                        // Final cleanup
+                        answerContent.querySelector('.typing-cursor')?.remove();
+                        thinkContent.querySelector('.typing-cursor')?.remove();
                         savePdfBtn.style.display = 'inline-block';
                         submitButton.disabled = false;
                         return; 
@@ -247,13 +258,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     boundary = buffer.indexOf('\n\n');
                 }
             }
-            processAndRenderFinalReport(fullReport, thinkContainer, thinkContent, answerContent);
 
         } catch(error) {
             console.error("Submit/Fetch Error:", error);
-            botMessageDiv.answerContent.innerHTML = `<pre style="color:red;">网络请求失败: ${error.message}</pre>`;
+            answerContent.innerHTML = `<pre style="color:red;">网络请求失败: ${error.message}</pre>`;
         } finally {
             submitButton.disabled = false;
+            answerContent.querySelector('.typing-cursor')?.remove();
+            thinkContent.querySelector('.typing-cursor')?.remove();
         }
     }
 
@@ -267,7 +279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         toggleThink.className = 'toggle-think';
         toggleThink.innerHTML = '展开AI思考过程 <i class="fas fa-chevron-down"></i>';
         const thinkContent = document.createElement('div');
-        thinkContent.className = 'think-content';
+        thinkContent.className = 'think-content markdown-content';
         thinkContainer.appendChild(toggleThink);
         thinkContainer.appendChild(thinkContent);
         const answerContent = document.createElement('div');
@@ -283,72 +295,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ? '收起AI思考过程 <i class="fas fa-chevron-down"></i>'
                 : '展开AI思考过程 <i class="fas fa-chevron-down"></i>';
         });
-        return { thinkContainer, thinkContent, answerContent, toggleThink };
-    }
-
-    function renderLive(text, thinkContainer, thinkContent, answerContent) {
-        const thinkStartTag = '<think>';
-        const thinkEndTag = '</think>';
-        
-        let currentAnswer = text;
-        let currentThink = "";
-        let isThinking = text.includes(thinkStartTag) && !text.includes(thinkEndTag);
-        let thinkingFinished = text.includes(thinkEndTag);
-
-        if (thinkingFinished) {
-            const thinkContentMatch = text.match(/<think>([\s\S]*)<\/think>/);
-            currentThink = thinkContentMatch ? thinkContentMatch[1] : "";
-            currentAnswer = text.substring(text.indexOf(thinkEndTag) + thinkEndTag.length);
-            if (thinkContent.classList.contains('expanded')) {
-                thinkContent.classList.remove('expanded');
-                thinkContainer.querySelector('.toggle-think').classList.remove('expanded');
-            }
-        } else if (isThinking) {
-            currentThink = text.substring(text.indexOf(thinkStartTag) + thinkStartTag.length);
-            currentAnswer = ""; // No answer to display yet.
-            if (!thinkContent.classList.contains('expanded')) {
-                thinkContent.classList.add('expanded');
-                thinkContainer.querySelector('.toggle-think').classList.add('expanded');
-            }
-        }
-
-        // Render the thinking part
-        if (currentThink.trim()) {
-            thinkContainer.style.display = 'block';
-            thinkContent.innerHTML = `<pre><code>${currentThink}</code></pre>`;
-        }
-
-        // Render the answer part
-        answerContent.innerHTML = marked.parse(currentAnswer) + '<span class="typing-cursor"></span>';
-        reportContainer.scrollTop = reportContainer.scrollHeight;
-    }
-
-    function processAndRenderFinalReport(text, thinkContainer, thinkContent, answerContent) {
-        const thinkBlockRegex = /<think>([\s\S]*)<\/think>/;
-        const thinkMatch = text.match(thinkBlockRegex);
-        
-        let finalAnswer = text;
-        let finalThink = "";
-
-        if (thinkMatch) {
-            finalThink = thinkMatch[1];
-            finalAnswer = text.substring(text.indexOf('</think>') + 8);
-        } else {
-            // If there's no complete think block, the whole text is the answer.
-            finalAnswer = text;
-        }
-
-        // Render the thinking part
-        if (finalThink.trim()) {
-            thinkContainer.style.display = 'block';
-            thinkContent.innerHTML = `<pre><code>${finalThink}</code></pre>`;
-        } else {
-            thinkContainer.style.display = 'none';
-        }
-
-        // Render the answer part
-        answerContent.innerHTML = marked.parse(finalAnswer);
-        reportContainer.scrollTop = reportContainer.scrollHeight;
+        return { thinkContainer, thinkContent, answerContent };
     }
 
     function updateUsage(usage) {
@@ -411,7 +358,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const answerClone = reportToSave.querySelector('.answer-content').cloneNode(true);
             pdfContent.appendChild(answerClone);
 
-            // To prevent screen flicker, render the element off-screen
             pdfContent.style.position = 'absolute';
             pdfContent.style.left = '-9999px';
             pdfContent.style.top = '0px';
@@ -423,7 +369,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 backgroundColor: '#ffffff'
             });
             
-            document.body.removeChild(pdfContent); // Clean up the DOM
+            document.body.removeChild(pdfContent);
 
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF({
@@ -442,7 +388,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- Data Gathering ---
     async function getUserInput() {
         const province = document.getElementById('province-select').value;
         const selectedStream = document.querySelector('input[name="stream"]:checked').value;
@@ -459,11 +404,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             if (!firstChoice || secondChoices.length !== 2) {
                 alert('请完成新高考的选科（1门首选+2门再选）。');
-                return null; // Stop submission if selection is incomplete
+                return null;
             }
             streamText = `新高考 (3+1+2): ${firstChoice} + ${secondChoices.join(' + ')}`;
-        } else if (selectedStream === '物理类' || selectedStream === '历史类') {
-            // No change needed, just use the value
         }
         
         const rawText = `
@@ -484,6 +427,5 @@ ${dilemma}
         };
     }
 
-    // Set the initial handleSubmit
     window.handleSubmit = handleSubmit;
 });
