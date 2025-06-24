@@ -1,4 +1,4 @@
-name: Run App via Actions (Manual Trigger)
+name: Run App
 
 on:
   workflow_dispatch: # Allows manual triggering

@@ -414,20 +414,96 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleSavePdf() {
-        // This function remains largely the same, so it's omitted for brevity
-        // but would be included in the final file.
+        const reportToSave = reportContainer.querySelector('.bot-message:last-child');
+        if (!reportToSave) {
+            alert("没有可保存的报告。");
+            return;
+        }
+        
+        savePdfBtn.disabled = true;
+        savePdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在生成...';
+
+        try {
+            const { jsPDF } = window.jspdf;
+            const userInput = await getUserInput();
+            
+            const pdfContent = document.createElement('div');
+            pdfContent.style.padding = '20px';
+            pdfContent.style.width = '800px';
+            pdfContent.style.background = 'white';
+            
+            const userInputHeader = document.createElement('h3');
+            userInputHeader.textContent = '我的输入';
+            pdfContent.appendChild(userInputHeader);
+            
+            const userInputBubble = document.createElement('div');
+            userInputBubble.className = 'user-message'; // Use the same class for styling
+            userInputBubble.style.alignSelf = 'flex-start'; // Align left in PDF
+            userInputBubble.innerHTML = `<pre>${userInput.rawText}</pre>`;
+            pdfContent.appendChild(userInputBubble);
+
+            const reportHeader = document.createElement('h3');
+            reportHeader.textContent = 'AI分析报告';
+            reportHeader.style.marginTop = '20px';
+            pdfContent.appendChild(reportHeader);
+
+            const answerClone = reportToSave.cloneNode(true);
+            // We need to add the styles directly for html2canvas to see them
+            const tempStyle = document.createElement('style');
+            tempStyle.innerHTML = `
+                .user-message { padding: 15px 20px; border-radius: 18px; margin-bottom: 25px; max-width: 80%; background-color: #0056b3; color: white; word-wrap: break-word; }
+                .user-message pre { white-space: pre-wrap; font-family: inherit; font-size: 1rem; margin: 0; padding: 0; background: none; border: none; color: white; }
+                .bot-message { padding: 15px 0; margin-bottom: 1rem; width: 100%; }
+                .markdown-content table { border-collapse: collapse; width: 100%; }
+                .markdown-content th, .markdown-content td { border: 1px solid #ddd; padding: 8px; }
+            `;
+            document.head.appendChild(tempStyle);
+            pdfContent.appendChild(answerClone);
+
+            document.body.appendChild(pdfContent);
+
+            const canvas = await html2canvas(pdfContent, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            });
+            
+            document.body.removeChild(pdfContent);
+            document.head.removeChild(tempStyle);
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: 'p',
+                unit: 'px',
+                format: [canvas.width, canvas.height]
+            });
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.save("高考志愿AI分析报告.pdf");
+        } catch (error) {
+            console.error("Failed to save PDF:", error);
+            alert("保存PDF失败，请检查控制台错误信息。");
+        } finally {
+            savePdfBtn.disabled = false;
+            savePdfBtn.innerHTML = '<i class="fas fa-file-pdf"></i> 保存为PDF';
+        }
     }
 
     async function getUserInput() {
         const province = document.getElementById('province-select').value;
         const selectedStream = document.querySelector('input[name="stream"]:checked').value;
         const rank = document.getElementById('rank-input').value;
-        const options = document.getElementById('options-input').value;
-        const dilemma = document.getElementById('dilemma-input').value;
+        const options = document.getElementById('options-input').value.trim();
+        const dilemma = document.getElementById('dilemma-input').value.trim();
         const scoreType = document.querySelector('input[name="score_type"]:checked').value;
         const scoreLabel = scoreType === 'score' ? '分数' : '位次';
 
         let streamText = selectedStream;
+
+        if (!options && !dilemma) {
+            alert('“纠结的方案”和“主要困惑”不能同时为空，请至少填写一项。');
+            return null;
+        }
+
         if (selectedStream === '新高考') {
             const firstChoice = document.querySelector('input[name="first-choice"]:checked')?.value;
             const secondChoices = Array.from(document.querySelectorAll('input[name="second-choice"]:checked')).map(cb => cb.value);
@@ -444,9 +520,9 @@ document.addEventListener('DOMContentLoaded', () => {
 科类: ${streamText}
 ${scoreLabel}: ${rank}
 纠结的方案:
-${options}
+${options || '未填写'}
 我的主要困惑:
-${dilemma}
+${dilemma || '未填写'}
         `.trim();
 
         return {

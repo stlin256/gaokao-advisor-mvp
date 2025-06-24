@@ -197,7 +197,7 @@ def get_system_prompt():
         "- 正式报告**必须**包含“方案PK记- 记分卡”表格。"
     ])
 
-def prepare_user_prompt(user_data, enrollment_data=None, score_data=None):
+def prepare_user_prompt(user_data, score_data=None):
     """Prepares the user's input part of the prompt."""
     user_info = user_data.get('rawText', '')
     province = user_data.get('province', '未知')
@@ -212,20 +212,11 @@ def prepare_user_prompt(user_data, enrollment_data=None, score_data=None):
         user_info,
         "---"
     ]
-
-    if enrollment_data and enrollment_data.get('data'):
-        enrollment_info = json.dumps(enrollment_data.get('data', {}), ensure_ascii=False, indent=2)
-        prompt_parts.extend([
-            "**参考数据1 (2025年最新招生计划变动):**",
-            "---",
-            enrollment_info,
-            "---"
-        ])
     
     if score_data:
         score_info = json.dumps(score_data, ensure_ascii=False, indent=2)
         prompt_parts.extend([
-            "**参考数据2 (历年分数线):**",
+            "**参考数据 (历年分数线):**",
             "---",
             score_info,
             "---"
