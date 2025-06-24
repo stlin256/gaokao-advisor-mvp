@@ -116,34 +116,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadAutocompleteData() {
-        try {
-            const response = await fetch('_data/enrollment_data_2025.json');
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const data = await response.json();
-            Object.values(data.data).forEach(province => {
-                Object.values(province).forEach(stream => {
-                    Object.keys(stream).forEach(school => {
-                        suggestions.push(school);
-                        Object.keys(stream[school]).forEach(major => {
-                            suggestions.push(`${school} ${major}`);
-                        });
-                    });
-                });
-            });
-            suggestions = [...new Set(suggestions)];
-            
-            new autoComplete({
-                selector: '#options-input',
-                minChars: 1,
-                source: function(term, suggest){
-                    term = term.toLowerCase();
-                    const matches = suggestions.filter(choice => choice.toLowerCase().includes(term));
-                    suggest(matches);
-                }
-            });
-        } catch (error) {
-            console.error("Failed to load autocomplete suggestions:", error);
-        }
+        // This function is now obsolete as we removed the dependency.
+        // Kept here as a placeholder in case it's needed in the future.
     }
 
     // --- Modal Logic ---
@@ -415,6 +389,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleSavePdf() {
         const reportToSave = reportContainer.querySelector('.bot-message:last-child');
+        const userBubbleToSave = reportContainer.querySelector('.user-message:last-child');
+
         if (!reportToSave) {
             alert("没有可保存的报告。");
             return;
@@ -425,22 +401,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const { jsPDF } = window.jspdf;
-            const userInput = await getUserInput();
             
             const pdfContent = document.createElement('div');
             pdfContent.style.padding = '20px';
             pdfContent.style.width = '800px';
             pdfContent.style.background = 'white';
-            
-            const userInputHeader = document.createElement('h3');
-            userInputHeader.textContent = '我的输入';
-            pdfContent.appendChild(userInputHeader);
-            
-            const userInputBubble = document.createElement('div');
-            userInputBubble.className = 'user-message'; // Use the same class for styling
-            userInputBubble.style.alignSelf = 'flex-start'; // Align left in PDF
-            userInputBubble.innerHTML = `<pre>${userInput.rawText}</pre>`;
-            pdfContent.appendChild(userInputBubble);
+            pdfContent.style.color = 'black';
+
+            if (userBubbleToSave) {
+                const userInputHeader = document.createElement('h3');
+                userInputHeader.textContent = '我的输入';
+                pdfContent.appendChild(userInputHeader);
+                
+                const userBubbleClone = userBubbleToSave.cloneNode(true);
+                // Override styles for PDF rendering
+                userBubbleClone.style.cssText = `
+                    padding: 15px 20px;
+                    border-radius: 18px;
+                    margin-bottom: 25px;
+                    max-width: 80%;
+                    background-color: #016A70;
+                    color: white;
+                    word-wrap: break-word;
+                    align-self: flex-start;
+                `;
+                userBubbleClone.querySelector('pre').style.color = 'white';
+                pdfContent.appendChild(userBubbleClone);
+            }
 
             const reportHeader = document.createElement('h3');
             reportHeader.textContent = 'AI分析报告';
@@ -448,18 +435,9 @@ document.addEventListener('DOMContentLoaded', () => {
             pdfContent.appendChild(reportHeader);
 
             const answerClone = reportToSave.cloneNode(true);
-            // We need to add the styles directly for html2canvas to see them
-            const tempStyle = document.createElement('style');
-            tempStyle.innerHTML = `
-                .user-message { padding: 15px 20px; border-radius: 18px; margin-bottom: 25px; max-width: 80%; background-color: #0056b3; color: white; word-wrap: break-word; }
-                .user-message pre { white-space: pre-wrap; font-family: inherit; font-size: 1rem; margin: 0; padding: 0; background: none; border: none; color: white; }
-                .bot-message { padding: 15px 0; margin-bottom: 1rem; width: 100%; }
-                .markdown-content table { border-collapse: collapse; width: 100%; }
-                .markdown-content th, .markdown-content td { border: 1px solid #ddd; padding: 8px; }
-            `;
-            document.head.appendChild(tempStyle);
             pdfContent.appendChild(answerClone);
 
+            // Temporarily append to body to render for html2canvas
             document.body.appendChild(pdfContent);
 
             const canvas = await html2canvas(pdfContent, {
@@ -469,7 +447,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             document.body.removeChild(pdfContent);
-            document.head.removeChild(tempStyle);
 
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF({
@@ -497,13 +474,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const scoreType = document.querySelector('input[name="score_type"]:checked').value;
         const scoreLabel = scoreType === 'score' ? '分数' : '位次';
 
-        let streamText = selectedStream;
-
         if (!options && !dilemma) {
             alert('“纠结的方案”和“主要困惑”不能同时为空，请至少填写一项。');
             return null;
         }
 
+        let streamText = selectedStream;
         if (selectedStream === '新高考') {
             const firstChoice = document.querySelector('input[name="first-choice"]:checked')?.value;
             const secondChoices = Array.from(document.querySelectorAll('input[name="second-choice"]:checked')).map(cb => cb.value);

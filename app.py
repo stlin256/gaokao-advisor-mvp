@@ -298,21 +298,10 @@ def handler():
         if session_id:
             history = load_session_history(session_id)
 
-        # Load enrollment data
-        enrollment_data = None
-        load_enrollment = os.environ.get("LOAD_ENROLLMENT_DATA", "false").lower() == "true"
-        if load_enrollment:
-            try:
-                enrollment_data_path = os.path.join(DATA_DIR, 'enrollment_data_2025.json')
-                with open(enrollment_data_path, 'r', encoding='utf-8') as f:
-                    enrollment_data = json.load(f)
-            except FileNotFoundError:
-                print("Warning: LOAD_ENROLLMENT_DATA is true, but enrollment_data_2025.json was not found.")
-        
         # Load score data
         score_data = load_score_data(user_data.get('province'), user_data.get('stream'))
 
-        user_prompt = prepare_user_prompt(user_data, enrollment_data, score_data)
+        user_prompt = prepare_user_prompt(user_data, score_data)
 
     except FileNotFoundError:
         return jsonify({"error": "服务器内部错误：关键数据文件丢失。"}), 500
