@@ -4,26 +4,68 @@ import traceback
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory, Response
 from openai import OpenAI
-import redis
 from dotenv import load_dotenv
+import threading
 
 load_dotenv() # Load environment variables from .env file
 
 # --- Configuration ---
 DAILY_LIMIT = int(os.environ.get("DAILY_LIMIT", 100))
-def get_daily_key():
-    """Generates a Redis key for the current day based on UTC."""
-    return f"daily_requests_count:{datetime.utcnow().strftime('%Y-%m-%d')}"
+USAGE_FILE = os.path.join('_data', 'usage.json')
+usage_data = {}
+file_lock = threading.Lock()
 
-# --- Redis Connection ---
-kv = None
-try:
-    redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
-    kv = redis.from_url(redis_url, decode_responses=True)
-    kv.ping()
-    print("Successfully connected to Redis.")
-except redis.exceptions.ConnectionError as e:
-    print(f"--- REDIS CONNECTION FAILED: {e} ---")
+# --- File-based Usage Counter ---
+def load_or_initialize_usage():
+    """Loads usage data from file, or initializes if not present/outdated."""
+    global usage_data
+    with file_lock:
+        today_str = datetime.utcnow().strftime('%Y-%m-%d')
+        try:
+            if os.path.exists(USAGE_FILE):
+                with open(USAGE_FILE, 'r') as f:
+                    data = json.load(f)
+                # If the date in file is not today, reset
+                if today_str not in data:
+                    usage_data = {today_str: 0}
+                else:
+                    usage_data = data
+            else:
+                # If file doesn't exist, create it
+                usage_data = {today_str: 0}
+                _write_usage_file()
+        except (json.JSONDecodeError, FileNotFoundError):
+            # If file is corrupted or not found, start fresh
+            usage_data = {today_str: 0}
+            _write_usage_file()
+    print(f"Usage initialized for {today_str}: {usage_data.get(today_str, 0)} requests.")
+
+def get_current_usage():
+    """Gets the current usage count for today."""
+    today_str = datetime.utcnow().strftime('%Y-%m-%d')
+    # Check if date has changed since last load
+    if today_str not in usage_data:
+        load_or_initialize_usage()
+    return usage_data.get(today_str, 0)
+
+def increment_usage():
+    """Increments usage count and writes to file."""
+    with file_lock:
+        today_str = datetime.utcnow().strftime('%Y-%m-%d')
+        # Ensure we are on the correct day
+        if today_str not in usage_data:
+            usage_data = {today_str: 1}
+        else:
+            usage_data[today_str] = usage_data.get(today_str, 0) + 1
+        _write_usage_file()
+        return usage_data[today_str]
+
+def _write_usage_file():
+    """Writes the current usage_data to the file (internal, needs lock)."""
+    # Ensure the _data directory exists
+    os.makedirs(os.path.dirname(USAGE_FILE), exist_ok=True)
+    with open(USAGE_FILE, 'w') as f:
+        json.dump(usage_data, f, indent=2)
 
 app = Flask(__name__, static_url_path='', static_folder='.')
 
@@ -91,10 +133,8 @@ def serve_static(path):
 # --- API Routes ---
 @app.route('/api/usage', methods=['GET'])
 def get_usage():
-    if not kv:
-        return jsonify({"used": "N/A", "limit": "N/A", "error": "数据库未连接"}), 500
     try:
-        current_usage = int(kv.get(get_daily_key()) or 0)
+        current_usage = get_current_usage()
         return jsonify({"used": current_usage, "limit": DAILY_LIMIT})
     except Exception as e:
         return jsonify({"used": "N/A", "limit": "N/A", "error": str(e)}), 500
@@ -102,14 +142,15 @@ def get_usage():
 @app.route('/api/handler', methods=['POST'])
 def handler():
     # --- Cost Control & Safety Check ---
-    if kv:
-        try:
-            current_usage = int(kv.get(get_daily_key()) or 0)
-            if current_usage >= DAILY_LIMIT:
-                error_msg = {"error": f"非常抱歉，今日的免费体验名额（{DAILY_LIMIT}次）已被抢完！请您明日再来。"}
-                return jsonify({**error_msg, "usage": {"used": current_usage, "limit": DAILY_LIMIT}}), 429
-        except redis.exceptions.ConnectionError:
-            return jsonify({"error": "数据库连接丢失，请联系管理员。"}), 500
+    try:
+        current_usage = get_current_usage()
+        if current_usage >= DAILY_LIMIT:
+            error_msg = {"error": f"非常抱歉，今日的免费体验名额（{DAILY_LIMIT}次）已被抢完！请您明日再来。"}
+            return jsonify({**error_msg, "usage": {"used": current_usage, "limit": DAILY_LIMIT}}), 429
+    except Exception as e:
+        print(f"Error during usage check: {e}")
+        # Allow to proceed if usage check fails, but log it.
+        pass
     
     # --- Main Logic ---
     try:
@@ -142,9 +183,8 @@ def handler():
 
     def stream_response(p):
         try:
-            if kv:
-                new_usage = kv.incr(get_daily_key())
-                yield f"event: usage\ndata: {json.dumps({'used': new_usage, 'limit': DAILY_LIMIT})}\n\n"
+            new_usage = increment_usage()
+            yield f"event: usage\ndata: {json.dumps({'used': new_usage, 'limit': DAILY_LIMIT})}\n\n"
 
             api_key = os.environ.get("OPENAI_API_KEY")
             base_url = os.environ.get("OPENAI_API_BASE")
@@ -178,5 +218,6 @@ def handler():
     return Response(stream_response(prompt), mimetype='text/event-stream')
 
 if __name__ == "__main__":
+    load_or_initialize_usage()
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=True, host='0.0.0.0', port=port)

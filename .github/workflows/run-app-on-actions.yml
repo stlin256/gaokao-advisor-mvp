@@ -1,4 +1,4 @@
-name: (HACK) Run App on Actions
+name: Run App via Actions (Manual Trigger)
 
 on:
   workflow_dispatch: # Allows manual triggering
@@ -26,21 +26,23 @@ jobs:
           NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
 
       - name: Run Docker container and expose with ngrok
+        id: run_app
         env:
           # These secrets must be configured in your repository settings
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
+          DAILY_LIMIT: ${{ secrets.DAILY_LIMIT }}
           LOAD_ENROLLMENT_DATA: "true"
           PORT: 5000
         run: |
           # Run the Docker container in detached mode
-          # We pass the secrets as environment variables to the container
+          # We mount the _data directory to allow the app to write back to the host
           docker run -d --name gaokao-app \
+            -v $(pwd)/_data:/app/_data \
             -e PORT=${PORT} \
             -e OPENAI_API_KEY=${OPENAI_API_KEY} \
             -e OPENAI_API_BASE=${OPENAI_API_BASE} \
-            -e REDIS_URL=${REDIS_URL} \
+            -e DAILY_LIMIT=${DAILY_LIMIT:-100} \
             -e LOAD_ENROLLMENT_DATA=${LOAD_ENROLLMENT_DATA} \
             -p ${PORT}:${PORT} \
             gaokao-advisor
@@ -59,5 +61,25 @@ jobs:
           echo "----------------------------------------------------------------"
           echo "NOTE: This job will be terminated after a few hours."
           echo "This is NOT a real hosting solution."
-          # Keep the job alive
-          sleep 21000 # Keep alive for just under 6 hours
+          # Keep the job alive. We use a timeout on the step instead of sleep.
+          # This allows the subsequent steps to run even if this one is killed.
+          sleep 21000
+
+      - name: Commit and push usage data
+        # This step will always run, even if the previous step is cancelled or fails
+        if: always()
+        run: |
+          # Configure git
+          git config --global user.name 'GitHub Actions Bot'
+          git config --global user.email 'actions-bot@github.com'
+          
+          # Check if the usage file has changed
+          if ! git diff --quiet _data/usage.json; then
+            echo "Usage file has changed. Committing and pushing..."
+            git add _data/usage.json
+            # Use [skip ci] to prevent triggering a new workflow run
+            git commit -m "chore: Update usage data [skip ci]"
+            git push
+          else
+            echo "No changes in usage file. Nothing to commit."
+          fi
