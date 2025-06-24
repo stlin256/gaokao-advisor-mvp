@@ -41,6 +41,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Event Listeners ---
     submitButton.addEventListener('click', () => window.handleSubmit());
+    
+    const mainStreamGroup = document.getElementById('main-stream-group');
+    const newGaokaoOptions = document.getElementById('new-gaokao-options');
+    
+    mainStreamGroup.addEventListener('change', (e) => {
+        if (e.target.value === '新高考') {
+            newGaokaoOptions.style.display = 'block';
+        } else {
+            newGaokaoOptions.style.display = 'none';
+        }
+    });
+
+    const secondChoiceGroup = document.getElementById('second-choice-group');
+    secondChoiceGroup.addEventListener('change', (e) => {
+        const checkedBoxes = secondChoiceGroup.querySelectorAll('input[type="checkbox"]:checked');
+        if (checkedBoxes.length > 2) {
+            alert('再选科目最多只能选择两项。');
+            e.target.checked = false;
+        }
+    });
 
     if (rankInput && rankSlider && rankSliderValue) {
         rankSlider.addEventListener('input', (e) => {
@@ -418,27 +438,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Data Gathering ---
     async function getUserInput() {
         const province = document.getElementById('province-select').value;
-        const selectedStream = document.querySelector('input[name="stream"]:checked');
-        const stream = selectedStream ? selectedStream.value : '';
+        const selectedStream = document.querySelector('input[name="stream"]:checked').value;
         const rank = document.getElementById('rank-input').value;
         const options = document.getElementById('options-input').value;
         const dilemma = document.getElementById('dilemma-input').value;
         const scoreType = document.querySelector('input[name="score_type"]:checked').value;
         const scoreLabel = scoreType === 'score' ? '分数' : '位次';
+
+        let streamText = selectedStream;
+        if (selectedStream === '新高考') {
+            const firstChoice = document.querySelector('input[name="first-choice"]:checked')?.value;
+            const secondChoices = Array.from(document.querySelectorAll('input[name="second-choice"]:checked')).map(cb => cb.value);
+            
+            if (!firstChoice || secondChoices.length !== 2) {
+                alert('请完成新高考的选科（1门首选+2门再选）。');
+                return null; // Stop submission if selection is incomplete
+            }
+            streamText = `新高考 (3+1+2): ${firstChoice} + ${secondChoices.join(' + ')}`;
+        }
         
         const rawText = `
 省份: ${province}
-科类: ${stream}
+科类: ${streamText}
 ${scoreLabel}: ${rank}
-纠结的方案: 
+纠结的方案:
 ${options}
-我的主要困惑: 
+我的主要困惑:
 ${dilemma}
         `.trim();
 
         return {
             province: province,
-            stream: stream,
+            stream: streamText,
             rank: rank ? parseInt(rank, 10) : null,
             rawText: rawText,
         };
