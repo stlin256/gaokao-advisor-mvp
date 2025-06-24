@@ -5,21 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>高考志愿AI决策顾问</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css?v=4.0.0">
+    <link rel="stylesheet" href="style.css?v=5.0.0">
 </head>
 <body>
-    <div class="main-header">
-        <h1>高考志愿AI决策顾问</h1>
-        <span id="usage-stats"></span>
-    </div>
+    <!-- Main App Container -->
     <div class="container">
-        <!-- 左侧/顶部 信息提交区域 -->
-        <div class="submission-area">
-            <header id="submission-header" class="collapsible-header">
-                <h2><i class="fas fa-user-edit"></i> 填写您的信息</h2>
-                <i class="fas fa-chevron-up collapse-icon"></i>
-            </header>
-            <div class="form-container" id="submission-content">
+        <!-- Left Panel -->
+        <div class="info-panel">
+            <h2 id="app-title"><i class="fas fa-graduation-cap"></i> 高考志愿AI顾问</h2>
+            <div class="form-container">
                 <div class="form-group">
                     <label for="province-select">选择省份:</label>
                     <select id="province-select">
@@ -39,41 +33,6 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>选择科类模式:</label>
-                    <div class="radio-group" id="main-stream-group">
-                        <input type="radio" id="stream-physics" name="stream" value="物理类" checked>
-                        <label for="stream-physics">物理类</label>
-                        <input type="radio" id="stream-history" name="stream" value="历史类">
-                        <label for="stream-history">历史类</label>
-                        <input type="radio" id="stream-new" name="stream" value="新高考">
-                        <label for="stream-new">新高考(3+1+2)</label>
-                    </div>
-                </div>
-                <div class="form-group" id="new-gaokao-options" style="display: none;">
-                    <div class="form-group sub-group">
-                        <label>首选科目 (1选1):</label>
-                        <div class="radio-group">
-                            <input type="radio" id="first-choice-physics" name="first-choice" value="物理">
-                            <label for="first-choice-physics">物理</label>
-                            <input type="radio" id="first-choice-history" name="first-choice" value="历史">
-                            <label for="first-choice-history">历史</label>
-                        </div>
-                    </div>
-                    <div class="form-group sub-group">
-                        <label>再选科目 (4选2):</label>
-                        <div class="radio-group" id="second-choice-group">
-                            <input type="checkbox" id="second-choice-bio" name="second-choice" value="生物">
-                            <label for="second-choice-bio">生物</label>
-                            <input type="checkbox" id="second-choice-chem" name="second-choice" value="化学">
-                            <label for="second-choice-chem">化学</label>
-                            <input type="checkbox" id="second-choice-geo" name="second-choice" value="地理">
-                            <label for="second-choice-geo">地理</label>
-                            <input type="checkbox" id="second-choice-poli" name="second-choice" value="政治">
-                            <label for="second-choice-poli">政治</label>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
                     <label>填写分数或位次:</label>
                     <div class="radio-group" id="score-type-group">
                         <input type="radio" id="type-rank" name="score_type" value="rank" checked>
@@ -81,39 +40,26 @@
                         <input type="radio" id="type-score" name="score_type" value="score">
                         <label for="type-score">按分数</label>
                     </div>
-                    <div class="slider-group">
-                        <input type="number" id="rank-input" placeholder="例如: 12000" min="1" max="750000">
-                        <input type="range" id="rank-slider" min="1" max="750000" value="100000" step="100">
-                        <span id="rank-slider-value">100000</span>
-                    </div>
+                    <input type="number" id="rank-input" placeholder="例如: 12000" min="1" max="750000">
                 </div>
-                <div class="form-group">
-                    <label for="options-input">您纠结的方案 (例如: A校B专业 vs C校D专业):</label>
-                    <textarea id="options-input" placeholder="方案A vs 方案B..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="dilemma-input">您的主要困惑是什么？</label>
-                    <div class="dilemma-tags">
-                        <button class="tag-btn">城市发展</button>
-                        <button class="tag-btn">专业前景</button>
-                        <button class="tag-btn">学校名气</button>
-                        <button class="tag-btn">录取概率</button>
-                        <button class="tag-btn">个人兴趣</button>
-                    </div>
-                    <textarea id="dilemma-input" placeholder="点击上方标签或手动输入..."></textarea>
-                </div>
-                <button id="submit-button"><i class="fas fa-paper-plane"></i> 生成分析报告</button>
+            </div>
+            <div class="footer-info">
+                <span id="usage-stats"></span>
+                <p>Powered by AI</p>
             </div>
         </div>
 
-        <!-- 右侧/下部 报告展示区域 -->
-        <div class="report-main-area">
-            <header id="report-header">
-                <h2><i class="fas fa-brain"></i> AI决策顾问分析报告</h2>
-                <button id="save-pdf-btn" style="display: none;"><i class="fas fa-file-pdf"></i> 保存为PDF</button>
+        <!-- Right Panel (Chat Area) -->
+        <div class="chat-main-area">
+            <header id="chat-header">
+                <h2><i class="fas fa-comments"></i> AI分析与对话</h2>
             </header>
-            <div id="report-container">
-                <!-- Bot messages will be appended here -->
+            <div id="chat-container">
+                <!-- Messages will be appended here -->
+            </div>
+            <div class="input-container">
+                <textarea id="chat-input" placeholder="请输入你的方案、困惑，或继续追问..." rows="1"></textarea>
+                <button id="send-button"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
     </div>
@@ -130,9 +76,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/Pixabay/JavaScript-autoComplete@v1.0.4/auto-complete.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="script.js?v=4.0.0"></script>
+    <script src="script.js?v=5.0.0"></script>
 </body>
 </html>
