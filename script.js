@@ -326,17 +326,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    async function handleSubmit(followUpUserInput = null) {
-        if (!isAuthenticated) {
-            alert("请先通过邀请码验证。");
-            return;
-        }
-        
-        // If it's not a follow-up, get input from the form.
-        // If it IS a follow-up, the input is passed as an argument.
-        const userInput = followUpUserInput ? followUpUserInput : await getUserInput();
+    async function handleSubmit() {
+        const userInput = await getUserInput();
         if (!userInput) return;
-
+        
         // --- Mobile-specific UI change: Collapse submission area on submit ---
         const isMobile = () => window.innerWidth <= 1024;
         if (isMobile() && !submissionArea.classList.contains('collapsed')) {
@@ -347,6 +340,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         // ---
+
+        await sendRequest(userInput);
+    }
+
+    async function handleFollowUpSubmit() {
+        const followUpText = followUpInput.value.trim();
+        if (!followUpText) return;
+
+        const userInput = {
+            rawText: followUpText,
+            isFollowUp: true // Add a flag to indicate a follow-up question
+        };
+        
+        followUpInput.value = '';
+        await sendRequest(userInput);
+    }
+
+    async function sendRequest(userInput) {
+        if (!isAuthenticated) {
+            alert("请先通过邀请码验证。");
+            return;
+        }
 
         // --- Create and display user message bubble ---
         const userMessageDiv = document.createElement('div');
@@ -360,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         submitButton.disabled = true;
         submitButton.classList.add('loading');
+        followUpSendBtn.disabled = true;
         savePdfBtn.style.display = 'none';
 
         let streamHasStartedVisualOutput = false;
@@ -626,7 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             submitButton.disabled = false;
             submitButton.classList.remove('loading');
-            submitButton.innerHTML = '<i class="fas fa-paper-plane"></i> 生成分析报告';
+            followUpSendBtn.disabled = false;
         }
     }
 
@@ -762,26 +778,4 @@ ${dilemma || '未填写'}
 
     window.handleSubmit = handleSubmit;
 
-    async function handleFollowUpSubmit() {
-        const followUpText = followUpInput.value.trim();
-        if (!followUpText) return;
-
-        // Create a simplified user input object for the follow-up
-        const userInput = {
-            rawText: followUpText,
-            // We don't need to resend all the form data, the context is in the session
-        };
-        
-        // Append user message and clear input
-        const userMessageDiv = document.createElement('div');
-        userMessageDiv.className = 'user-message';
-        userMessageDiv.innerHTML = `<pre>${userInput.rawText}</pre>`;
-        reportContainer.appendChild(userMessageDiv);
-        reportContainer.scrollTop = reportContainer.scrollHeight;
-        followUpInput.value = '';
-
-        // Call the main handler with the new input
-        // We pass the simplified object to the main handler
-        await handleSubmit(userInput);
-    }
 });
