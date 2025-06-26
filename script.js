@@ -175,9 +175,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Collapsible Sections Logic ---
     function setupCollapsibleSections() {
         const isMobile = () => window.innerWidth <= 1024;
-        let firstSubmit = true;
-
-        if (!isMobile()) return;
+        if (!isMobile()) {
+            // Ensure handleSubmit is globally accessible on desktop too
+            window.handleSubmit = handleSubmit;
+            return;
+        }
 
         submissionArea.classList.remove('collapsed');
         updateCollapseIcons();
@@ -195,14 +197,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 : 'fas fa-chevron-up collapse-icon';
         }
 
-        window.originalHandleSubmit = handleSubmit;
+        // Wrap the original handleSubmit to add mobile-specific functionality
+        const originalHandleSubmit = handleSubmit;
         window.handleSubmit = async function() {
-            if (isMobile() && firstSubmit) {
+            if (isMobile()) {
                 submissionArea.classList.add('collapsed');
                 updateCollapseIcons();
-                firstSubmit = false;
             }
-            await window.originalHandleSubmit.apply(this, arguments);
+            // Use .apply to pass arguments correctly to the original function
+            await originalHandleSubmit.apply(this, arguments);
         }
     }
 
@@ -284,6 +287,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                     thinkAccumulator += parts[0];
                                     answerAccumulator += parts[1];
                                     mode = 'answering';
+                                    
+                                    // --- Collapse the think container now that thinking is done ---
+                                    const thinkContent = thinkContainer.querySelector('.think-content');
+                                    const toggleButton = thinkContainer.querySelector('.toggle-think');
+                                    if (thinkContent && toggleButton && thinkContent.classList.contains('expanded')) {
+                                        thinkContent.classList.remove('expanded');
+                                        toggleButton.classList.remove('expanded');
+                                        toggleButton.innerHTML = '展开AI思考过程 <i class="fas fa-chevron-down"></i>';
+                                    }
+                                    // ---
                                 } else {
                                     thinkAccumulator += token;
                                 }
@@ -370,7 +383,6 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleThink.addEventListener('click', () => {
             thinkContent.classList.toggle('expanded');
             toggleThink.classList.toggle('expanded');
-            const icon = toggleThink.querySelector('.fas');
             if (thinkContent.classList.contains('expanded')) {
                 toggleThink.innerHTML = '收起AI思考过程 <i class="fas fa-chevron-up"></i>';
             } else {
@@ -378,6 +390,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
+        // --- Start with the think container expanded by default ---
+        thinkContent.classList.add('expanded');
+        toggleThink.classList.add('expanded');
+        toggleThink.innerHTML = '收起AI思考过程 <i class="fas fa-chevron-up"></i>';
+        // ---
+
         return { thinkContainer, thinkContent, answerContent };
     }
 
