@@ -123,12 +123,12 @@ document.addEventListener('DOMContentLoaded', () => {
             followUpInput.addEventListener('keyup', (e) => {
                 if (e.key === 'Enter') handleFollowUpSubmit();
             });
-            followUpInput.addEventListener('focus', () => {
-                // Hide tooltip on focus
+            // Any click on the document should hide the tooltip
+            document.addEventListener('click', () => {
                 if (followUpTooltip.classList.contains('visible')) {
                     followUpTooltip.classList.remove('visible');
                 }
-            });
+            }, { once: true }); // The listener will be removed after being invoked once
         }
         setupCollapsibleSections();
     }
@@ -583,12 +583,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         // Show follow-up bar for the first time
                         if (!followUpContainer.classList.contains('visible')) {
+                            // Adjust padding to make space for the follow-up bar
+                            const followUpHeight = followUpContainer.offsetHeight;
+                            reportContainer.style.paddingBottom = `${followUpHeight}px`;
+                            reportContainer.scrollTop = reportContainer.scrollHeight;
+
                             followUpContainer.classList.add('visible');
                             followUpTooltip.classList.add('visible');
-                            // Hide the tooltip after a few seconds
+                            
+                            // Hide the tooltip after 2 seconds
                             setTimeout(() => {
                                 followUpTooltip.classList.remove('visible');
-                            }, 5000);
+                            }, 2000);
                         }
                         return;
                     } else if (message.startsWith('event: error')) {

@@ -146,6 +146,7 @@ textarea { min-height: 80px; resize: vertical; }
 
 #report-container {
     flex: 1;
+    transition: padding-bottom 0.5s cubic-bezier(0.22, 1, 0.36, 1); /* Smooth transition for padding */
     padding: 1.5rem;
     overflow-y: auto;
     line-height: 1.6;
