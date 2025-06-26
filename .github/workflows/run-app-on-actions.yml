@@ -31,6 +31,7 @@ jobs:
           # These secrets must be configured in your repository settings
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
+          OPENAI_MODEL_NAME: ${{ secrets.OPENAI_MODEL_NAME }}
           DAILY_LIMIT: ${{ secrets.DAILY_LIMIT }}
           LOAD_ENROLLMENT_DATA: "true"
           PORT: 5000
