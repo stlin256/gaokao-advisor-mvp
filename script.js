@@ -521,6 +521,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (!firstAnswerChunkReceived && currentAnswerBuffer.trim().length > 0) {
                                     firstAnswerChunkReceived = true;
                                 }
+                                // First, update the raw text immediately for responsiveness
+                                uiRefs.answerContent.innerText = currentAnswerBuffer + "▍";
+                                // Then, trigger the debounced markdown rendering
                                 if (firstAnswerChunkReceived) {
                                     debouncedRenderAnswerMarkdown();
                                 }
