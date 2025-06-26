@@ -55,7 +55,7 @@ V1.1版本在原基础上，新增了**邀请码认证**、**多轮对话**、**
 - **后端 (Backend)**: Flask, Gunicorn, OpenAI SDK
 - **前端 (Frontend)**: 原生 JavaScript (ES6+), HTML5, CSS3, Marked.js, jsPDF, html2canvas
 - **状态存储**: 本地JSON文件 (`_data/`, `sessions/`)
-- **开发与部署 (DevOps)**: Docker, Docker Compose, GitHub Actions, ngrok, Pytest
+- **开发与部署 (DevOps)**: Docker, Docker Compose, GitHub Actions, ngrok, Pytest 
 
 ---
 
