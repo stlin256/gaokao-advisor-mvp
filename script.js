@@ -18,6 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const dilemmaTags = document.querySelector('.dilemma-tags');
     const savePdfBtn = document.getElementById('save-pdf-btn');
     
+    // Follow-up elements
+    const followUpContainer = document.getElementById('follow-up-container');
+    const followUpInput = document.getElementById('follow-up-input');
+    const followUpSendBtn = document.getElementById('follow-up-send-btn');
+    const followUpTooltip = document.getElementById('follow-up-tooltip');
+
     // Modal elements
     const modalOverlay = document.getElementById('modal-overlay');
     const modal = document.getElementById('modal');
@@ -111,6 +117,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if(savePdfBtn) {
             savePdfBtn.addEventListener('click', handleSavePdf);
+        }
+        if(followUpSendBtn) {
+            followUpSendBtn.addEventListener('click', handleFollowUpSubmit);
+            followUpInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') handleFollowUpSubmit();
+            });
+            followUpInput.addEventListener('focus', () => {
+                // Hide tooltip on focus
+                if (followUpTooltip.classList.contains('visible')) {
+                    followUpTooltip.classList.remove('visible');
+                }
+            });
         }
         setupCollapsibleSections();
     }
@@ -308,12 +326,15 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    async function handleSubmit() {
+    async function handleSubmit(followUpUserInput = null) {
         if (!isAuthenticated) {
             alert("请先通过邀请码验证。");
             return;
         }
-        const userInput = await getUserInput();
+        
+        // If it's not a follow-up, get input from the form.
+        // If it IS a follow-up, the input is passed as an argument.
+        const userInput = followUpUserInput ? followUpUserInput : await getUserInput();
         if (!userInput) return;
 
         // --- Create and display user message bubble ---
@@ -559,6 +580,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         
                         savePdfBtn.style.display = 'inline-block';
+                        
+                        // Show follow-up bar for the first time
+                        if (!followUpContainer.classList.contains('visible')) {
+                            followUpContainer.classList.add('visible');
+                            followUpTooltip.classList.add('visible');
+                            // Hide the tooltip after a few seconds
+                            setTimeout(() => {
+                                followUpTooltip.classList.remove('visible');
+                            }, 5000);
+                        }
                         return;
                     } else if (message.startsWith('event: error')) {
                         const data = message.substring(message.indexOf('data: ') + 6);
@@ -711,4 +742,27 @@ ${dilemma || '未填写'}
     }
 
     window.handleSubmit = handleSubmit;
+
+    async function handleFollowUpSubmit() {
+        const followUpText = followUpInput.value.trim();
+        if (!followUpText) return;
+
+        // Create a simplified user input object for the follow-up
+        const userInput = {
+            rawText: followUpText,
+            // We don't need to resend all the form data, the context is in the session
+        };
+        
+        // Append user message and clear input
+        const userMessageDiv = document.createElement('div');
+        userMessageDiv.className = 'user-message';
+        userMessageDiv.innerHTML = `<pre>${userInput.rawText}</pre>`;
+        reportContainer.appendChild(userMessageDiv);
+        reportContainer.scrollTop = reportContainer.scrollHeight;
+        followUpInput.value = '';
+
+        // Call the main handler with the new input
+        // We pass the simplified object to the main handler
+        await handleSubmit(userInput);
+    }
 });
