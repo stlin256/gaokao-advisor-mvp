@@ -287,23 +287,21 @@ document.addEventListener('DOMContentLoaded', () => {
                                     thinkAccumulator += parts[0].replace('<think>', '');
                                     answerAccumulator += parts[1];
                                     mode = 'answering';
-                                    
-                                    // --- Collapse the think container now that thinking is done ---
+
+                                    // Collapse the think container now that thinking is done
                                     const thinkContentEl = thinkContainer.querySelector('.think-content');
                                     const toggleButton = thinkContainer.querySelector('.toggle-think');
-                                    if (thinkContentEl && toggleButton && thinkContentEl.classList.contains('expanded')) {
-                                        thinkContentEl.classList.remove('expanded');
-                                        toggleButton.classList.remove('expanded');
-                                        toggleButton.innerHTML = '展开AI思考过程 <i class="fas fa-chevron-down"></i>';
-                                    }
-                                    // ---
+                                    thinkContentEl.classList.remove('expanded');
+                                    toggleButton.classList.remove('expanded');
+                                    toggleButton.innerHTML = '展开AI思考过程 <i class="fas fa-chevron-down"></i>';
                                 } else {
-                                    thinkAccumulator += token;
+                                    thinkAccumulator += token.replace('<think>', '');
                                 }
                             } else {
                                 answerAccumulator += token;
                             }
 
+                            // Always update the content
                             if (thinkAccumulator) {
                                 thinkContainer.style.display = 'block';
                                 thinkContent.innerHTML = marked.parse(thinkAccumulator);
@@ -353,19 +351,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createBotMessage() {
         const botMessageDiv = document.createElement('div');
-        // The 'bot-message' class now just provides margin and full-width behavior
         botMessageDiv.className = 'bot-message';
         
         const thinkContainer = document.createElement('div');
         thinkContainer.className = 'think-container';
-        thinkContainer.style.display = 'none';
+        thinkContainer.style.display = 'none'; // Initially hidden, shown when first token arrives
         
         const toggleThink = document.createElement('div');
-        toggleThink.className = 'toggle-think';
-        toggleThink.innerHTML = '展开AI思考过程 <i class="fas fa-chevron-down"></i>';
+        toggleThink.className = 'toggle-think expanded'; // Expanded by default
+        toggleThink.innerHTML = '收起AI思考过程 <i class="fas fa-chevron-up"></i>';
         
         const thinkContent = document.createElement('div');
-        thinkContent.className = 'think-content markdown-content';
+        thinkContent.className = 'think-content markdown-content expanded'; // Expanded by default
         
         thinkContainer.appendChild(toggleThink);
         thinkContainer.appendChild(thinkContent);
@@ -388,12 +385,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleThink.innerHTML = '展开AI思考过程 <i class="fas fa-chevron-down"></i>';
             }
         });
-        
-        // --- Start with the think container expanded by default ---
-        thinkContent.classList.add('expanded');
-        toggleThink.classList.add('expanded');
-        toggleThink.innerHTML = '收起AI思考过程 <i class="fas fa-chevron-up"></i>';
-        // ---
 
         return { thinkContainer, thinkContent, answerContent };
     }
