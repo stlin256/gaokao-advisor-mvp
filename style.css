@@ -195,8 +195,17 @@ textarea { min-height: 80px; resize: vertical; }
     opacity: 1;
     overflow-y: auto;
     padding: 1em;
+    background-color: #f3f4f6; /* Light grey background */
+    border: 1px solid #e5e7eb; /* Subtle border */
+    border-radius: 8px; /* Rounded corners */
+    color: #4b5563; /* Darker text for readability */
+    margin-top: 0.5em;
 }
-.think-content pre { margin-top: 0.5em; background-color: #F8F9FA; box-shadow: inset 0 1px 4px rgba(0,0,0,0.04); }
+.think-content pre {
+    margin-top: 0.5em;
+    background-color: #e5e7eb; /* Slightly darker grey for nested code blocks */
+    box-shadow: inset 0 1px 4px rgba(0,0,0,0.04);
+}
 
 .typing-cursor { display: inline-block; width: 10px; height: 1.2rem; background-color: #333; animation: blink 1s infinite; margin-left: 2px; }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }

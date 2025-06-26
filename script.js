@@ -284,15 +284,15 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (mode === 'thinking') {
                                 if (token.includes('</think>')) {
                                     const parts = token.split('</think>');
-                                    thinkAccumulator += parts[0];
+                                    thinkAccumulator += parts[0].replace('<think>', '');
                                     answerAccumulator += parts[1];
                                     mode = 'answering';
                                     
                                     // --- Collapse the think container now that thinking is done ---
-                                    const thinkContent = thinkContainer.querySelector('.think-content');
+                                    const thinkContentEl = thinkContainer.querySelector('.think-content');
                                     const toggleButton = thinkContainer.querySelector('.toggle-think');
-                                    if (thinkContent && toggleButton && thinkContent.classList.contains('expanded')) {
-                                        thinkContent.classList.remove('expanded');
+                                    if (thinkContentEl && toggleButton && thinkContentEl.classList.contains('expanded')) {
+                                        thinkContentEl.classList.remove('expanded');
                                         toggleButton.classList.remove('expanded');
                                         toggleButton.innerHTML = '展开AI思考过程 <i class="fas fa-chevron-down"></i>';
                                     }
@@ -304,10 +304,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 answerAccumulator += token;
                             }
 
-                            const finalThink = thinkAccumulator.replace('<think>', '');
-                            if (finalThink) {
+                            if (thinkAccumulator) {
                                 thinkContainer.style.display = 'block';
-                                thinkContent.innerHTML = marked.parse(finalThink);
+                                thinkContent.innerHTML = marked.parse(thinkAccumulator);
                             }
                             
                             answerContent.innerHTML = marked.parse(answerAccumulator);
