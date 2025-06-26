@@ -331,7 +331,7 @@ def handler():
                 return
             
             client = OpenAI(api_key=api_key, base_url=base_url)
-            model_name = os.environ.get("OPENAI_MODEL_NAME", "qwen3-30b-a3b")
+            model_name = os.environ.get("OPENAI_MODEL_NAME", "gemini-2.5-pro")
             
             stream = client.chat.completions.create(
                 messages=messages_for_api,
