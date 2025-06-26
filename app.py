@@ -294,16 +294,21 @@ def handler():
         
         user_data = body.get('userInput', {})
         session_id = body.get('sessionId')
+        is_follow_up = user_data.get('isFollowUp', False)
         
         # Load history if session_id is provided
         history = []
         if session_id:
             history = load_session_history(session_id)
 
-        # Load score data
-        score_data = load_score_data(user_data.get('province'), user_data.get('stream'))
-
-        user_prompt = prepare_user_prompt(user_data, score_data)
+        # If it's a follow-up, the prompt is just the raw text.
+        # Otherwise, prepare the full prompt with context.
+        if is_follow_up:
+            user_prompt = user_data.get('rawText', '')
+        else:
+            # Load score data only for initial requests
+            score_data = load_score_data(user_data.get('province'), user_data.get('stream'))
+            user_prompt = prepare_user_prompt(user_data, score_data)
 
     except FileNotFoundError:
         return jsonify({"error": "服务器内部错误：关键数据文件丢失。"}), 500
