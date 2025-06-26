@@ -614,7 +614,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                 // Adjust padding to make space for the follow-up bar
                                 const followUpHeight = followUpContainer.offsetHeight;
                                 reportContainer.style.paddingBottom = `${followUpHeight}px`;
-                                reportContainer.scrollTop = reportContainer.scrollHeight;
+                                
+                                // Use scrollIntoView for more reliable scrolling on all devices
+                                const lastMessage = reportContainer.querySelector('.bot-message:last-child, .user-message:last-child');
+                                if (lastMessage) {
+                                    lastMessage.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                                } else {
+                                    reportContainer.scrollTop = reportContainer.scrollHeight;
+                                }
 
                                 followUpContainer.classList.add('visible');
                                 followUpTooltip.classList.add('visible');
