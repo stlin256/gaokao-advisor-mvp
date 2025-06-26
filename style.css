@@ -207,9 +207,14 @@ textarea { min-height: 80px; resize: vertical; }
     .container { height: 100%; max-height: 100%; flex-direction: column; }
     .submission-area {
         width: 100%;
-        max-height: 45vh; /* Re-add max-height to constrain the area */
+        height: 100%; /* Take full screen height on mobile */
+        flex-shrink: 0; /* Prevent it from shrinking */
         border-right: none;
         border-bottom: 1px solid var(--border-color-light-subtle);
+        transition: height 0.5s ease-in-out;
+    }
+    .submission-area.collapsed {
+        height: auto; /* When collapsed, shrink to fit header */
     }
     .report-main-area {
         width: 100%;
@@ -250,9 +255,7 @@ textarea { min-height: 80px; resize: vertical; }
 }
 
 @media (max-width: 768px) {
-    .submission-area {
-        max-height: 50vh; /* Adjust max-height for smaller screens */
-    }
+    /* The height is now controlled by the 1024px rule, no override needed */
     .form-container {
         padding: 0.75rem 1rem;
     }
