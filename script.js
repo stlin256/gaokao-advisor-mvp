@@ -462,6 +462,18 @@ document.addEventListener('DOMContentLoaded', () => {
                                             firstAnswerChunkReceived = true;
                                             chunkHadDisplayableContent = true;
                                         }
+                                        
+                                        // Smart collapse: wait 1s after think is finished
+                                        if (autoCollapseTimers.has(uiRefs.msgId)) clearTimeout(autoCollapseTimers.get(uiRefs.msgId));
+                                        const timerId = setTimeout(() => {
+                                            if (uiRefs.thinkWrapperElement.classList.contains('expanded')) {
+                                                uiRefs.thinkWrapperElement.classList.remove('expanded');
+                                                uiRefs.toggleElement.classList.remove('expanded');
+                                                uiRefs.toggleElement.innerHTML = `展开完整思考内容 <i class="fas fa-chevron-down"></i>`;
+                                            }
+                                            autoCollapseTimers.delete(uiRefs.msgId);
+                                        }, 1000); // 1-second delay
+                                        autoCollapseTimers.set(uiRefs.msgId, timerId);
                                     } else {
                                         currentThinkBuffer += chunk;
                                         accumulatedThoughtForDuration += chunk;
@@ -493,16 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 uiRefs.thinkWrapperElement.classList.add('expanded');
                                 uiRefs.toggleElement.classList.add('expanded');
                                 uiRefs.toggleElement.innerHTML = `收起思考内容 <i class="fas fa-chevron-up"></i>`;
-                                if (autoCollapseTimers.has(uiRefs.msgId)) clearTimeout(autoCollapseTimers.get(uiRefs.msgId));
-                                const timerId = setTimeout(() => {
-                                    if (uiRefs.thinkWrapperElement.classList.contains('expanded')) {
-                                        uiRefs.thinkWrapperElement.classList.remove('expanded');
-                                        uiRefs.toggleElement.classList.remove('expanded');
-                                        uiRefs.toggleElement.innerHTML = `展开完整思考内容 <i class="fas fa-chevron-down"></i>`;
-                                    }
-                                    autoCollapseTimers.delete(uiRefs.msgId);
-                                }, 7000);
-                                autoCollapseTimers.set(uiRefs.msgId, timerId);
+                                // We remove the fixed timer from here.
                             }
 
                             if (inThinkBlock && thinkContentStarted) {
@@ -514,12 +517,15 @@ document.addEventListener('DOMContentLoaded', () => {
                                 uiRefs.thinkCodeElement.textContent = currentThinkBuffer.trim();
                             }
 
-                            uiRefs.answerContent.innerText = currentAnswerBuffer + (!inThinkBlock && firstAnswerChunkReceived && currentAnswerBuffer.length > 0 ? "▍" : "");
+                            // Live-rendering the markdown for the answer part
                             if (!inThinkBlock && firstAnswerChunkReceived) {
                                 debouncedRenderAnswerMarkdown();
                             } else if (!inThinkBlock && !firstAnswerChunkReceived && currentAnswerBuffer.trim().length > 0) {
                                 firstAnswerChunkReceived = true;
-                                debouncedRenderAnswerMarkdown();
+                            }
+                            // Fallback for the very first non-empty chunk if debouncing isn't triggered
+                            if (!inThinkBlock && firstAnswerChunkReceived) {
+                                uiRefs.answerContent.innerHTML = marked.parse(currentAnswerBuffer.trim() + "▍");
                             }
                             
                             reportContainer.scrollTop = reportContainer.scrollHeight;
