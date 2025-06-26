@@ -390,13 +390,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const debouncedRenderAnswerMarkdown = debounce(() => {
             const currentScroll = reportContainer.scrollTop;
             const isAtBottom = reportContainer.scrollHeight - reportContainer.clientHeight <= currentScroll + 10;
-
-            uiRefs.answerContent.innerHTML = marked.parse(currentAnswerBuffer.trim() + (!inThinkBlock && currentAnswerBuffer.length > 0 && firstAnswerChunkReceived ? "▍" : ""));
+    
+            // Render the current answer buffer with a cursor
+            uiRefs.answerContent.innerHTML = marked.parse(currentAnswerBuffer.trim() + "▍");
             
             if(isAtBottom) {
                 reportContainer.scrollTop = reportContainer.scrollHeight;
             }
-        }, 250);
+        }, 150);
 
         try {
             const response = await fetch('/api/handler', {
@@ -472,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                                 uiRefs.toggleElement.innerHTML = `展开完整思考内容 <i class="fas fa-chevron-down"></i>`;
                                             }
                                             autoCollapseTimers.delete(uiRefs.msgId);
-                                        }, 1000); // 1-second delay
+                                        }, 1000);
                                         autoCollapseTimers.set(uiRefs.msgId, timerId);
                                     } else {
                                         currentThinkBuffer += chunk;
@@ -505,7 +506,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                 uiRefs.thinkWrapperElement.classList.add('expanded');
                                 uiRefs.toggleElement.classList.add('expanded');
                                 uiRefs.toggleElement.innerHTML = `收起思考内容 <i class="fas fa-chevron-up"></i>`;
-                                // We remove the fixed timer from here.
                             }
 
                             if (inThinkBlock && thinkContentStarted) {
@@ -517,15 +517,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 uiRefs.thinkCodeElement.textContent = currentThinkBuffer.trim();
                             }
 
-                            // Live-rendering the markdown for the answer part
-                            if (!inThinkBlock && firstAnswerChunkReceived) {
-                                debouncedRenderAnswerMarkdown();
-                            } else if (!inThinkBlock && !firstAnswerChunkReceived && currentAnswerBuffer.trim().length > 0) {
-                                firstAnswerChunkReceived = true;
-                            }
-                            // Fallback for the very first non-empty chunk if debouncing isn't triggered
-                            if (!inThinkBlock && firstAnswerChunkReceived) {
-                                uiRefs.answerContent.innerHTML = marked.parse(currentAnswerBuffer.trim() + "▍");
+                            if (!inThinkBlock) {
+                                if (!firstAnswerChunkReceived && currentAnswerBuffer.trim().length > 0) {
+                                    firstAnswerChunkReceived = true;
+                                }
+                                if (firstAnswerChunkReceived) {
+                                    debouncedRenderAnswerMarkdown();
+                                }
                             }
                             
                             reportContainer.scrollTop = reportContainer.scrollHeight;
@@ -607,7 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const pdfContent = document.createElement('div');
             pdfContent.style.cssText = `
                 width: 800px;
-                background: white;
+                background: #F4FAFA;
                 color: black;
                 padding: 20px;
             `;
@@ -641,7 +639,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const canvas = await html2canvas(pdfContent, {
                 scale: 2,
                 useCORS: true,
-                backgroundColor: '#ffffff'
+                backgroundColor: null
             });
             
             document.body.removeChild(pdfContent); // Clean up
