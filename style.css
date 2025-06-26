@@ -262,8 +262,13 @@ textarea { min-height: 80px; resize: vertical; }
         min-height: 60px;
     }
     .submission-area header h2, .report-main-area header h2 {
-        font-size: 1.1rem;
-        padding: 0.75rem;
+        font-size: 1rem; /* Smaller font for headers */
+    }
+    .main-header {
+        padding: 0.5rem 1rem; /* Reduced padding for main header */
+    }
+    .submission-area header, .report-main-area header {
+        padding: 0.75rem; /* Reduced padding for section headers */
     }
 }
 /* --- Modal Styles --- */

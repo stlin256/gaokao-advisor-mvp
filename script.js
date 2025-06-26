@@ -337,6 +337,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const userInput = followUpUserInput ? followUpUserInput : await getUserInput();
         if (!userInput) return;
 
+        // --- Mobile-specific UI change: Collapse submission area on submit ---
+        const isMobile = () => window.innerWidth <= 1024;
+        if (isMobile() && !submissionArea.classList.contains('collapsed')) {
+            submissionArea.classList.add('collapsed');
+            const subIcon = submissionHeader.querySelector('.collapse-icon');
+            if (subIcon) {
+                subIcon.className = 'fas fa-chevron-down collapse-icon';
+            }
+        }
+        // ---
+
         // --- Create and display user message bubble ---
         const userMessageDiv = document.createElement('div');
         userMessageDiv.className = 'user-message';
