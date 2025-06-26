@@ -453,7 +453,7 @@ textarea { min-height: 80px; resize: vertical; }
     border-top: 1px solid var(--border-color-light-subtle);
     background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(4px);
-    position: absolute;
+    position: absolute; /* Changed from absolute to relative to the parent */
     bottom: 0;
     left: 0;
     right: 0;

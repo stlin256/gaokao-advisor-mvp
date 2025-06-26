@@ -581,21 +581,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         savePdfBtn.style.display = 'inline-block';
                         
-                        // Show follow-up bar for the first time
-                        if (!followUpContainer.classList.contains('visible')) {
-                            // Adjust padding to make space for the follow-up bar
-                            const followUpHeight = followUpContainer.offsetHeight;
-                            reportContainer.style.paddingBottom = `${followUpHeight}px`;
-                            reportContainer.scrollTop = reportContainer.scrollHeight;
+                        // Show follow-up bar for the first time after a 1-second delay
+                        setTimeout(() => {
+                            if (!followUpContainer.classList.contains('visible')) {
+                                // Adjust padding to make space for the follow-up bar
+                                const followUpHeight = followUpContainer.offsetHeight;
+                                reportContainer.style.paddingBottom = `${followUpHeight}px`;
+                                reportContainer.scrollTop = reportContainer.scrollHeight;
 
-                            followUpContainer.classList.add('visible');
-                            followUpTooltip.classList.add('visible');
-                            
-                            // Hide the tooltip after 2 seconds
-                            setTimeout(() => {
-                                followUpTooltip.classList.remove('visible');
-                            }, 2000);
-                        }
+                                followUpContainer.classList.add('visible');
+                                followUpTooltip.classList.add('visible');
+                                
+                                // Hide the tooltip after 2 seconds
+                                setTimeout(() => {
+                                    followUpTooltip.classList.remove('visible');
+                                }, 2000);
+                            }
+                        }, 1000); // 1-second delay before showing the bar
                         return;
                     } else if (message.startsWith('event: error')) {
                         const data = message.substring(message.indexOf('data: ') + 6);
