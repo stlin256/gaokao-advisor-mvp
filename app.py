@@ -145,10 +145,13 @@ def save_session_history(session_id, history):
         json.dump(history, f, ensure_ascii=False, indent=2)
 
 def load_score_data(province, stream):
-    """Loads score line data for a given province and stream."""
-    if not LOAD_SCORE_DATA:
+    """
+    Loads score line data for a given province and stream from a single file
+    named after the province, e.g., '江苏.json'.
+    """
+    if not LOAD_SCORE_DATA or not province:
         return None
-    
+
     # For new gaokao, map to traditional streams
     if "物理" in stream:
         stream_key = "理科"
@@ -158,18 +161,22 @@ def load_score_data(province, stream):
         stream_key = stream
 
     score_data = {}
+    filepath = os.path.join(SCORE_LINES_DIR, f"{province}.json")
+
+    if not os.path.exists(filepath):
+        print(f"Score data file not found for province: {province}")
+        return None
+
     try:
-        for filename in os.listdir(SCORE_LINES_DIR):
-            if filename.endswith('.json'):
-                filepath = os.path.join(SCORE_LINES_DIR, filename)
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    if data.get('province') == province:
-                        year = data.get('year', '未知年份')
-                        if stream_key in data.get('batches', {}):
-                            score_data[year] = data['batches'][stream_key]
-    except Exception as e:
-        print(f"Error loading score data: {e}")
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            if data.get('province') == province:
+                for yearly_entry in data.get('yearly_data', []):
+                    year = yearly_entry.get('year', '未知年份')
+                    if stream_key in yearly_entry.get('batches', {}):
+                        score_data[year] = yearly_entry['batches'][stream_key]
+    except (json.JSONDecodeError, Exception) as e:
+        print(f"Error loading or parsing score data for {province}: {e}")
     
     return score_data if score_data else None
 
